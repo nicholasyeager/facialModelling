@@ -76,3 +76,17 @@ def test_face_partly_outside_frame_is_safely_clipped():
     assert mapping.mask.shape == (100, 100)
     rendered = blend_effect(np.zeros((100, 100, 3), np.uint8), np.ones((16, 16), np.float32), mapping)
     assert not rendered[mapping.mask == 0].any()
+
+
+def test_native_propagation_maps_to_face_and_remains_confined():
+    from facial_fire._native import Simulation
+
+    frame = np.full((240, 240, 3), 113, np.uint8)
+    mapping = FaceMapping.from_landmarks(landmarks(), frame.shape)
+    kernel = Simulation(32, 32)
+    uv = mapping.canonical_point(100, 120)
+    kernel.ignite(*uv)
+    kernel.step(1 / 60, 12, 0.4, steps=120)
+    rendered = blend_effect(frame, kernel.snapshot(), mapping)
+    assert not np.array_equal(rendered[120, 100], frame[120, 100])
+    np.testing.assert_array_equal(rendered[mapping.mask == 0], frame[mapping.mask == 0])

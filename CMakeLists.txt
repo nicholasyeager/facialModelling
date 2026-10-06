@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.20)
+project(facial_fire LANGUAGES CXX)
+
+set(PYBIND11_FINDPYTHON ON)
+find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+find_package(pybind11 CONFIG REQUIRED)
+
+pybind11_add_module(_native cpp/bindings.cpp cpp/simulation.cpp)
+target_compile_features(_native PRIVATE cxx_std_17)
+if(MSVC)
+    target_compile_options(_native PRIVATE /W4 /fp:precise)
+else()
+    target_compile_options(_native PRIVATE -Wall -Wextra -Wpedantic -ffp-contract=off)
+endif()
+install(TARGETS _native LIBRARY DESTINATION facial_fire RUNTIME DESTINATION facial_fire)

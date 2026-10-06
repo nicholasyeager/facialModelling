@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core==0.11.6", "pybind11==3.0.1"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "facial-fire"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local face-attached color propagation portfolio project"
 requires-python = ">=3.11,<3.13"
 dependencies = [
@@ -19,8 +19,11 @@ dev = ["pytest==8.4.2"]
 [project.scripts]
 facial-fire = "facial_fire.app:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.scikit-build]
+cmake.version = ">=3.20,<4"
+cmake.build-type = "Release"
+wheel.packages = ["src/facial_fire"]
+build-dir = "build/{wheel_tag}"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

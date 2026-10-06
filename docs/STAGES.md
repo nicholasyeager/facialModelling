@@ -1,8 +1,8 @@
 # Incremental delivery and verification
 
 Stop after each stage for local verification and a separate GitHub commit/push.
-Automated checks and a human webcam check gate advancement. Stages 2–4 remain
-planned work, not implemented functionality.
+Automated checks and a human webcam check gate advancement. Stage 1 was accepted
+by the user; stage 2 is the current checkpoint. Stages 3–4 remain planned work.
 
 | Stage | Scope | Acceptance gate | Suggested commit |
 | --- | --- | --- | --- |
@@ -27,11 +27,30 @@ planned work, not implemented functionality.
 Record camera, CPU, Python/dependency versions, lighting and observed problems
 when reporting a pass. Do not record or commit webcam footage.
 
-## Planned simulation contract
+## Stage 2 manual acceptance
 
-Stage 2 will define a documented deterministic four-neighbor rule, reading only
-`current` and writing each `next` cell once. Outside-grid neighbors contribute
-zero. A fixed timestep accumulator advances independently of camera FPS; lost
-tracking discards lost elapsed time rather than catching up. OpenMP parallelizes
-the same cell rule with static work sharing. Benchmarks reset identical seeds
-and execute identical step counts. These are constraints, not stage 1 behavior.
+1. Start the rebuilt demo. The effect is initially empty. Click inside your face
+   or press I to ignite. Confirm a tint expands gradually from the seed.
+2. Move and tilt moderately. Confirm propagation stays attached and D shows no
+   tint outside the face outline. Click outside the face: no new ignition.
+3. Press Space. The pattern should freeze but still follow your moving face.
+   Press Space again: propagation resumes without a sudden catch-up jump.
+4. Press R: all tint clears. Wait several seconds: no spontaneous reappearance.
+   Click to ignite again, including while paused.
+5. Press +/= and - to change speed. With speed 0, cooling should fade the effect.
+   O only hides/shows the overlay; it does not pause simulation.
+6. Leave the view briefly (less than two seconds by default), then return. The
+   effect should resume from the held state. Leave for longer than the timeout:
+   return to an empty effect until you ignite again.
+7. Try `--grid-size 64` and `--loss-timeout 1` to verify configuration. The apparent
+   propagation rate varies with resolution; this is documented behavior.
+8. Close the window or press Q. Confirm the camera is released.
+
+## Implemented serial simulation contract
+
+Stage 2 implements the documented four-neighbor rule in `README.md`, reading
+only `current` and writing each `next` cell once. Outside-grid neighbors
+contribute zero. A fixed timestep accumulator advances independently of camera
+FPS under normal load; lost/paused time is discarded. Intervals beyond 0.25s
+drop excess time to bound work. OpenMP will parallelize the same rule in stage 3.
+Stage 4 benchmarks will reset identical seeds and execute identical tick counts.
