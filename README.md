@@ -3,14 +3,9 @@
 A local webcam facial color propagation project focused on computer vision,
 parallel computing, correctness and honest performance measurement.
 
-**Current milestone: stage 2 — deterministic serial C++ propagation.** OpenMP
-and benchmarks follow after local verification of this checkpoint.
-See [the delivery stages and acceptance checklist](docs/STAGES.md).
-
 ## Windows / VS Code setup
 
-Open this repository folder (the inner `facialModelling` directory) in VS Code.
-Use 64-bit Python 3.11; this project supports 3.11–3.12. Install Visual Studio
+This project requires 64-bit Python 3.11; this project supports 3.11–3.12. Install Visual Studio
 2022 Community or Build Tools with **Desktop development with C++**, the MSVC
 x64/x86 toolset and a Windows SDK. An existing Visual Studio installation needs
 that workload; the editor alone is insufficient. In PowerShell:
@@ -26,14 +21,6 @@ py -3.11 -m venv .venv
 Select `.venv\Scripts\python.exe` with **Python: Select Interpreter** in VS Code.
 Activation is optional. On Linux/macOS use `python3.11` and `.venv/bin/python`.
 OpenCV needs a desktop display; a headless package cannot show this demo.
-
-For your Cygwin Bash terminal, use Windows Python with forward slashes:
-
-```bash
-./.venv/Scripts/python.exe -m pip install -e '.[dev]'
-./.venv/Scripts/python.exe -m pytest -q
-./.venv/Scripts/python.exe -m facial_fire.app
-```
 
 The editable install compiles the extension with CMake through scikit-build-core.
 Build dependencies provide CMake automatically if needed. Python edits take effect
@@ -186,7 +173,6 @@ Stage 2 also tests the native kernel against an independent NumPy reference,
 single-step synchronous updates, corners/no wrapping, repeatability, both-buffer
 reset, cooling, bounds/input validation, owned snapshots, fixed-step frame-rate
 independence, pause/resume, tracking-loss timeout and bounded stall recovery.
-See [recorded validation](docs/VALIDATION.md) and the stage 2 manual checklist.
 
 Perimeter tests additionally cover identical/different seeds, irregularity,
 connected growth, multiple ignition regions, one-tick frontier confinement,
@@ -198,17 +184,3 @@ is a landmark polygon, not skin segmentation: it includes eyes, lips, facial
 hair and potentially occluding objects. No frames or footage are saved.
 Inference and rendering run locally after setup; application code does not send
 camera data over the network.
-
-## Upcoming parallel and performance work
-
-Stage 3 adds OpenMP using the same cell rule, an execution-mode switch, thread
-configuration and serial/parallel equivalence tests. It will require compiler
-OpenMP support (MSVC or GCC; Clang may need libomp).
-MPI, CUDA, custom training and photorealistic flames are outside the baseline.
-
-Stage 4 measures tracking, simulation, rendering and total processing separately,
-with FPS and processing latency. Simulation-only benchmarks exclude capture and
-rendering, warm up, reset identical initial conditions, repeat runs and report
-medians across grid sizes/thread counts. Updates/s is `cells * steps / seconds`;
-speedup is `serial_time / parallel_time`; efficiency is `speedup / threads`.
-No performance results are claimed yet; small grids may be slower with OpenMP.
