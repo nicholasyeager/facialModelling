@@ -87,8 +87,8 @@ def main() -> None:
             state = "paused" if propagation.paused else ("running" if mapping is not None else "waiting")
             status += f" | serial {args.spread_mode} {state} | speed {propagation.spread_speed:.1f}"
             cv2.putText(display, status, (12, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
-            cv2.putText(display, "Click/I: ignite | Space: pause | R: clear | +/-: speed | O: tint | D: outline | Q: quit",
-                        (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+            cv2.putText(display, "Click/I: ignite | Space: pause | R: clear | +/-: speed", (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+            cv2.putText(display, "O: toggle overlay | D: debug contours | Q/Esc: quit", (12, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
             cv2.imshow(window, display)
             key = cv2.waitKey(1) & 0xFF
             if key in (27, ord("q")) or cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) < 1:
