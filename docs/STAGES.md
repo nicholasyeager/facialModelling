@@ -46,10 +46,20 @@ when reporting a pass. Do not record or commit webcam footage.
    propagation rate varies with resolution; this is documented behavior.
 8. Close the window or press Q. Confirm the camera is released.
 
+### Seeded perimeter follow-up
+
+The default now grows a random subset of the active boundary's neighboring cells.
+Compare `--seed 1` with `--seed 2`: fronts should differ. Reset and repeat the same
+ignition with one seed to check reproducibility. Try several ignition points;
+their boundaries should expand and eventually merge. Use `--spread-mode smooth`
+to compare the original algorithm. Grid directions and the intensity threshold
+can still be visible; this is stochastic growth, not a fluid solver.
+
 ## Implemented serial simulation contract
 
-Stage 2 implements the documented four-neighbor rule in `README.md`, reading
-only `current` and writing each `next` cell once. Outside-grid neighbors
+Stage 2 implements seeded eight-neighbor perimeter growth and the original
+four-neighbor smooth mode, reading only `current` and writing each `next` cell
+once. Outside-grid neighbors
 contribute zero. A fixed timestep accumulator advances independently of camera
 FPS under normal load; lost/paused time is discarded. Intervals beyond 0.25s
 drop excess time to bound work. OpenMP will parallelize the same rule in stage 3.

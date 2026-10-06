@@ -13,7 +13,8 @@ except ImportError as exc:
 
 class Propagation:
     def __init__(self, size=128, spread_speed=12.0, cooling=0.4,
-                 timestep=1 / 60, loss_timeout=2.0, ignition_radius=0.025):
+                 timestep=1 / 60, loss_timeout=2.0, ignition_radius=0.025,
+                 spread_mode="perimeter", seed=1):
         for value, low, high, name in (
             (spread_speed, 0, 60, "spread speed"),
             (cooling, 0, 60, "cooling"),
@@ -23,7 +24,9 @@ class Propagation:
         ):
             if not math.isfinite(value) or not low <= value <= high:
                 raise ValueError(f"{name} must be finite and in [{low}, {high}]")
-        self.kernel = Simulation(size, size)
+        if not isinstance(seed, int) or not 0 <= seed < 2**64:
+            raise ValueError("Seed must be an unsigned 64-bit integer")
+        self.kernel = Simulation(size, size, mode=spread_mode, seed=seed)
         self.spread_speed = spread_speed
         self.cooling = cooling
         self.timestep = timestep

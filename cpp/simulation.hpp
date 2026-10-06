@@ -1,13 +1,16 @@
 #pragma once
 
 #include <vector>
+#include <cstdint>
+#include <string>
 
 namespace facial_fire {
 
 // Own both buffers. Each update reads current_, writes next_, then swaps.
 class Simulation {
 public:
-    Simulation(int rows, int cols);
+    Simulation(int rows, int cols, const std::string& mode = "perimeter",
+               std::uint64_t seed = 1);
     int rows() const { return rows_; }
     int cols() const { return cols_; }
     const std::vector<float>& grid() const { return current_; }
@@ -22,6 +25,9 @@ private:
     int cols_;
     std::vector<float> current_;
     std::vector<float> next_;
+    bool perimeter_;
+    std::uint64_t seed_;
+    std::uint64_t tick_ = 0;
 };
 
 }  // namespace facial_fire

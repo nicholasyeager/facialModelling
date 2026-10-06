@@ -84,7 +84,7 @@ close other camera apps and check Windows camera permissions for desktop apps.
 Start with an empty effect, then click or press I. For example, in Cygwin:
 
 ```bash
-./.venv/Scripts/python.exe -m facial_fire.app --grid-size 128 --spread-speed 12 --cooling 0.4 --simulation-hz 60 --loss-timeout 2 --ignition-radius 0.025
+./.venv/Scripts/python.exe -m facial_fire.app --grid-size 128 --spread-speed 12 --cooling 0.4 --simulation-hz 60 --loss-timeout 2 --ignition-radius 0.025 --seed 1
 ```
 
 Grid size is 2–2048 per axis (128 recommended); speed and cooling are rates in
@@ -94,6 +94,11 @@ rate, not a promise of pixels/second. The front crosses more cells at larger
 resolutions, so apparent spread speed changes with resolution. At speed 0,
 cooling fades the existing effect without activating new cells. Paused ignition
 is allowed, but the seed will not spread until resumed.
+
+**Perimeter growth is now the default.** Choose another `--seed` for a different
+irregular front; resetting repeats the same seed's sequence. Use `--spread-mode
+smooth` to compare with the original uniform four-neighbor spread. Both modes
+remain serial C++ and use the same fixed simulation clock and tracking-loss policy.
 
 ## Architecture
 
@@ -116,7 +121,32 @@ returns, so a different face can inherit state during a short loss.
 
 ## Simulation rule and timing
 
-Each cell stores a float32 intensity in [0, 1]. For every fixed tick:
+Each cell stores a float32 intensity in [0, 1]. Default `perimeter` mode treats
+intensities >= 0.25 as active. Each tick:
+
+1. Read the strongest of eight neighbors from `current`. Diagonal intensities
+   are weighted by 1/sqrt(2) to account for distance.
+2. Cold cells with a sufficiently active neighbor form the growth frontier.
+   Each is selected with probability `1 - exp(-spread_speed * dt * neighbor)`.
+   Selected cells ignite at `max(0.35, 0.75 * neighbor)`; unselected cold cells
+   only cool. There is no random ignition away from the current frontier.
+3. Already active cells use the continuous growth/cooling formula below. This
+   strengthens newly grown regions gradually. Every cell writes only its own
+   `next` location, so new ignition cannot cascade farther within that tick.
+
+The frontier follows all ignition regions automatically; separate regions can
+merge. It includes cold holes adjacent to active cells as well as exterior edges.
+There is no separate contour sampling or fluid dynamics solver. This makes an
+irregular stochastic growth front rather than a physically realistic flame.
+
+Random draws use a 64-bit integer mixer of `(seed, simulation_tick, cell_index)`
+and its top 24 bits, with no global `srand()/rand()` state. The same cell and tick
+will receive the same draw irrespective of traversal order, supporting future
+serial/OpenMP equivalence. `reset()` and `set_grid()` rewind the tick counter;
+additional click ignitions do not rewind it. Seeds are unsigned 64-bit integers.
+
+For the optional `smooth` mode, the original rule reads only four neighbors and
+applies continuous growth/cooling to all cells:
 
 ```text
 neighbor = max(north, south, west, east) from current
@@ -130,8 +160,8 @@ An ignition raises intensities in a UV disk to 1 and always includes the nearest
 cell. Reset clears both buffers. Python receives an owned snapshot for rendering
 so it cannot mutate native state or retain a stale buffer view.
 
-This is a deterministic color-spread model with cooling, without fuel depletion
-or randomness. Neighboring active cells can sustain each other; it need not burn
+This is a reproducible color-spread model with cooling, without fuel depletion.
+Neighboring active cells can sustain each other; it need not burn
 out without reset or lower spread speed. At extreme rates/low tick frequencies,
 clipping keeps intensities bounded but the dynamics become coarse. The canonical
 square is simulated in full; the current face mask confines the *rendered* effect.
@@ -157,6 +187,10 @@ single-step synchronous updates, corners/no wrapping, repeatability, both-buffer
 reset, cooling, bounds/input validation, owned snapshots, fixed-step frame-rate
 independence, pause/resume, tracking-loss timeout and bounded stall recovery.
 See [recorded validation](docs/VALIDATION.md) and the stage 2 manual checklist.
+
+Perimeter tests additionally cover identical/different seeds, irregularity,
+connected growth, multiple ignition regions, one-tick frontier confinement,
+diagonal distance weighting, corner clipping and random-sequence reset.
 
 Target one face with moderate movement and good lighting. The affine mapping
 does not model depth, strong yaw/pitch or facial expression deformation. The oval

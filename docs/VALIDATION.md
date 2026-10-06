@@ -1,5 +1,17 @@
 # Validation checkpoints
 
+## Stage 2 seeded perimeter follow-up — October 6, 2026
+
+- Serial C++ extension rebuilt successfully with the same MSVC/CMake toolchain.
+- `python -m pytest -q`: **63 passed**.
+- Both seeded perimeter growth and original smooth-mode checks pass.
+- Same seeds/tick counts reproduce exactly; different seeds change the frontier.
+- Tests verify one-tick surface-only growth, eight-neighbor connectivity, diagonal
+  weighting, separate ignition regions, clipped corners, no spontaneous ignition,
+  reset/set-grid sequence rewind and zero-timestep random-state preservation.
+- Existing pause, loss-timeout, fixed-clock and face-confinement tests pass.
+- Live webcam appearance: pending user verification. No performance claims.
+
 ## Stage 2 — October 6, 2026
 
 Environment: Windows x64, Python 3.11, MSVC 19.39.33523 / Visual Studio 2022

@@ -11,9 +11,25 @@ void require_range(float value, float low, float high, const char* name) {
         throw std::invalid_argument(name);
     }
 }
+
+// A counter-based draw: no shared RNG state or dependence on traversal order.
+// Unsigned overflow is intentional. A future parallel loop gets the same draw
+// for each (seed, tick, cell) as the serial loop.
+float random_unit(std::uint64_t seed, std::uint64_t tick, std::size_t cell) {
+    std::uint64_t bits = seed + tick * 0xD1B54A32D192ED03ULL
+                             + (cell + 1) * 0x9E3779B97F4A7C15ULL;
+    bits = (bits ^ (bits >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    bits = (bits ^ (bits >> 27)) * 0x94D049BB133111EBULL;
+    bits ^= bits >> 31;
+    return static_cast<float>(bits >> 40) / 16777216.0f;
+}
 }  // namespace
 
-Simulation::Simulation(int rows, int cols) : rows_(rows), cols_(cols) {
+Simulation::Simulation(int rows, int cols, const std::string& mode, std::uint64_t seed)
+    : rows_(rows), cols_(cols), perimeter_(mode == "perimeter"), seed_(seed) {
+    if (mode != "perimeter" && mode != "smooth") {
+        throw std::invalid_argument("Spread mode must be perimeter or smooth");
+    }
     if (rows < 2 || cols < 2 || rows > 2048 || cols > 2048) {
         throw std::invalid_argument("Grid dimensions must be between 2 and 2048");
     }
@@ -29,11 +45,13 @@ void Simulation::set_grid(const float* values) {
     }
     std::copy(values, values + current_.size(), current_.begin());
     std::fill(next_.begin(), next_.end(), 0.0f);
+    tick_ = 0;
 }
 
 void Simulation::reset() {
     std::fill(current_.begin(), current_.end(), 0.0f);
     std::fill(next_.begin(), next_.end(), 0.0f);
+    tick_ = 0;
 }
 
 void Simulation::ignite(float u, float v, float radius, float intensity) {
@@ -65,6 +83,7 @@ void Simulation::step(float dt, float spread_speed, float cooling, int steps) {
     if (steps < 0) {
         throw std::invalid_argument("Step count cannot be negative");
     }
+    if (dt == 0.0f) return;  // No simulation time: do not consume random draws.
     for (int iteration = 0; iteration < steps; ++iteration) {
         update_serial(dt, spread_speed, cooling);
     }
@@ -79,12 +98,38 @@ void Simulation::update_serial(float dt, float spread_speed, float cooling) {
             if (row + 1 < rows_) neighbor = std::max(neighbor, current_[i + cols_]);
             if (col > 0) neighbor = std::max(neighbor, current_[i - 1]);
             if (col + 1 < cols_) neighbor = std::max(neighbor, current_[i + 1]);
+            if (perimeter_) {
+                // Diagonals reduce the four-neighbor diamond shape. Weight by
+                // inverse distance so diagonal advance is less likely.
+                constexpr float diagonal_weight = 0.70710678f;
+                if (row > 0 && col > 0)
+                    neighbor = std::max(neighbor, diagonal_weight * current_[i - cols_ - 1]);
+                if (row > 0 && col + 1 < cols_)
+                    neighbor = std::max(neighbor, diagonal_weight * current_[i - cols_ + 1]);
+                if (row + 1 < rows_ && col > 0)
+                    neighbor = std::max(neighbor, diagonal_weight * current_[i + cols_ - 1]);
+                if (row + 1 < rows_ && col + 1 < cols_)
+                    neighbor = std::max(neighbor, diagonal_weight * current_[i + cols_ + 1]);
+            }
             const float value = current_[i];
             const float growth = spread_speed * neighbor * (1.0f - value);
-            next_[i] = std::clamp(value + dt * (growth - cooling * value), 0.0f, 1.0f);
+            float updated = value + dt * (growth - cooling * value);
+            if (perimeter_ && value < 0.25f) {
+                // Only the current surface may activate new cells. Other cold
+                // cells simply cool: no random islands or same-tick cascades.
+                updated = value * (1.0f - dt * cooling);
+                if (neighbor >= 0.25f) {
+                    const float probability = -std::expm1(-spread_speed * dt * neighbor);
+                    if (random_unit(seed_, tick_, i) < probability) {
+                        updated = std::max(updated, std::max(0.35f, 0.75f * neighbor));
+                    }
+                }
+            }
+            next_[i] = std::clamp(updated, 0.0f, 1.0f);
         }
     }
     current_.swap(next_);
+    ++tick_;
 }
 
 }  // namespace facial_fire

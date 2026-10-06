@@ -18,7 +18,7 @@ def reference_step(grid, dt, speed, cooling):
 @pytest.mark.parametrize("shape", [(2, 2), (3, 7), (16, 13)])
 def test_native_matches_reference_over_many_steps(shape):
     expected = np.random.default_rng(123).random(shape, dtype=np.float32)
-    kernel = Simulation(*shape)
+    kernel = Simulation(*shape, mode="smooth")
     kernel.set_grid(expected)
     for _ in range(40):
         expected = reference_step(expected, np.float32(1 / 60), np.float32(12), np.float32(0.4))
@@ -27,7 +27,7 @@ def test_native_matches_reference_over_many_steps(shape):
 
 
 def test_one_step_reads_only_previous_buffer_and_four_neighbors():
-    kernel = Simulation(5, 5)
+    kernel = Simulation(5, 5, mode="smooth")
     kernel.ignite(0.5, 0.5, radius=0)
     kernel.step(0.1, 2, 1)
     expected = np.zeros((5, 5), np.float32)
@@ -38,7 +38,7 @@ def test_one_step_reads_only_previous_buffer_and_four_neighbors():
 
 
 def test_corner_boundary_has_no_wraparound():
-    kernel = Simulation(3, 4)
+    kernel = Simulation(3, 4, mode="smooth")
     kernel.ignite(1, 0, radius=0)
     kernel.step(0.1, 2, 0)
     expected = np.zeros((3, 4), np.float32)

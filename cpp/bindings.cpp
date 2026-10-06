@@ -9,9 +9,10 @@ namespace py = pybind11;
 using facial_fire::Simulation;
 
 PYBIND11_MODULE(_native, module) {
-    module.doc() = "Deterministic serial double-buffered propagation";
+    module.doc() = "Seeded perimeter and smooth serial double-buffered propagation";
     py::class_<Simulation>(module, "Simulation")
-        .def(py::init<int, int>(), py::arg("rows"), py::arg("cols"))
+        .def(py::init<int, int, const std::string&, std::uint64_t>(),
+             py::arg("rows"), py::arg("cols"), py::arg("mode") = "perimeter", py::arg("seed") = 1)
         .def_property_readonly("rows", &Simulation::rows)
         .def_property_readonly("cols", &Simulation::cols)
         .def("reset", &Simulation::reset)

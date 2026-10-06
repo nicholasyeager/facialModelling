@@ -24,6 +24,8 @@ def main() -> None:
     parser.add_argument("--simulation-hz", type=float, default=60.0)
     parser.add_argument("--loss-timeout", type=float, default=2.0)
     parser.add_argument("--ignition-radius", type=float, default=0.025)
+    parser.add_argument("--spread-mode", choices=("perimeter", "smooth"), default="perimeter")
+    parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--no-mirror", action="store_true")
     args = parser.parse_args()
     if min(args.width, args.height) < 1 or args.grid_size < 2:
@@ -38,6 +40,7 @@ def main() -> None:
             size=args.grid_size, spread_speed=args.spread_speed, cooling=args.cooling,
             timestep=1 / args.simulation_hz, loss_timeout=args.loss_timeout,
             ignition_radius=args.ignition_radius,
+            spread_mode=args.spread_mode, seed=args.seed,
         )
     except ValueError as exc:
         parser.error(str(exc))
@@ -82,7 +85,7 @@ def main() -> None:
                 cv2.drawContours(display, contours, -1, (0, 255, 0), 2)
             status = "Face tracked" if mapping is not None else "No face - overlay hidden"
             state = "paused" if propagation.paused else ("running" if mapping is not None else "waiting")
-            status += f" | serial {state} | speed {propagation.spread_speed:.1f}"
+            status += f" | serial {args.spread_mode} {state} | speed {propagation.spread_speed:.1f}"
             cv2.putText(display, status, (12, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
             cv2.putText(display, "Click/I: ignite | Space: pause | R: clear | +/-: speed | O: tint | D: outline | Q: quit",
                         (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
