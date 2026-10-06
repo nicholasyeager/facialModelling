@@ -1,4 +1,4 @@
-"""Stage 2: one webcam, one face, deterministic serial C++ propagation."""
+"""Local webcam face filter with seeded serial/OpenMP C++ propagation."""
 
 import argparse
 from pathlib import Path
@@ -8,7 +8,7 @@ import cv2
 
 from .mapping import FaceMapping
 from .rendering import blend_effect
-from .simulation import Propagation
+from .simulation import Propagation, openmp_available
 from .tracking import FaceTracker
 
 
@@ -26,6 +26,8 @@ def main() -> None:
     parser.add_argument("--ignition-radius", type=float, default=0.025)
     parser.add_argument("--spread-mode", choices=("perimeter", "smooth"), default="perimeter")
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--execution", choices=("serial", "parallel"), default="serial")
+    parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--no-mirror", action="store_true")
     args = parser.parse_args()
     if min(args.width, args.height) < 1 or args.grid_size < 2:
@@ -41,11 +43,12 @@ def main() -> None:
             timestep=1 / args.simulation_hz, loss_timeout=args.loss_timeout,
             ignition_radius=args.ignition_radius,
             spread_mode=args.spread_mode, seed=args.seed,
+            execution=args.execution, threads=args.threads,
         )
-    except ValueError as exc:
+    except (ValueError, RuntimeError) as exc:
         parser.error(str(exc))
 
-    window = "Facial Fire - Stage 2 (serial C++)"
+    window = "Facial Fire"
     mapping = None
     enabled = True
     debug = False
@@ -85,10 +88,13 @@ def main() -> None:
                 cv2.drawContours(display, contours, -1, (0, 255, 0), 2)
             status = "Face tracked" if mapping is not None else "No face - overlay hidden"
             state = "paused" if propagation.paused else ("running" if mapping is not None else "waiting")
-            status += f" | serial {args.spread_mode} {state} | speed {propagation.spread_speed:.1f}"
+            status += f" | {propagation.execution} {args.spread_mode} {state} | speed {propagation.spread_speed:.1f}"
+            if propagation.kernel.parallel:
+                status += f" | threads {propagation.kernel.last_threads}/{propagation.kernel.threads}"
             cv2.putText(display, status, (12, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
             cv2.putText(display, "Click/I: ignite | Space: pause | R: clear | +/-: speed", (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
-            cv2.putText(display, "O: toggle overlay | D: debug contours | Q/Esc: quit", (12, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+            execution_help = "P: serial/parallel" if openmp_available else "OpenMP unavailable"
+            cv2.putText(display, f"{execution_help} | O: overlay | D: contours | Q/Esc: quit", (12, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
             cv2.imshow(window, display)
             key = cv2.waitKey(1) & 0xFF
             if key in (27, ord("q")) or cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) < 1:
@@ -107,6 +113,8 @@ def main() -> None:
                 propagation.adjust_speed(-2.0)
             elif key == ord("d"):
                 debug = not debug
+            elif key == ord("p") and openmp_available:
+                propagation.toggle_execution()
     except (FileNotFoundError, RuntimeError, ValueError) as exc:
         parser.exit(1, f"Error: {exc}\n")
     finally:

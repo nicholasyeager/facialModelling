@@ -1,9 +1,9 @@
-"""Fixed-step scheduling and tracking-loss policy for the native serial grid."""
+"""Fixed-step scheduling and tracking-loss policy for the native grid."""
 
 import math
 
 try:
-    from ._native import Simulation
+    from ._native import Simulation, openmp_available
 except ImportError as exc:
     raise ImportError(
         'Native simulation missing. Build with: python -m pip install -e ".[dev]" '
@@ -14,7 +14,7 @@ except ImportError as exc:
 class Propagation:
     def __init__(self, size=128, spread_speed=12.0, cooling=0.4,
                  timestep=1 / 60, loss_timeout=2.0, ignition_radius=0.025,
-                 spread_mode="perimeter", seed=1):
+                 spread_mode="perimeter", seed=1, execution="serial", threads=4):
         for value, low, high, name in (
             (spread_speed, 0, 60, "spread speed"),
             (cooling, 0, 60, "cooling"),
@@ -27,6 +27,7 @@ class Propagation:
         if not isinstance(seed, int) or not 0 <= seed < 2**64:
             raise ValueError("Seed must be an unsigned 64-bit integer")
         self.kernel = Simulation(size, size, mode=spread_mode, seed=seed)
+        self.set_execution(execution, threads)
         self.spread_speed = spread_speed
         self.cooling = cooling
         self.timestep = timestep
@@ -39,6 +40,21 @@ class Propagation:
         self._was_running = False
         self._accumulator = 0.0
         self.dropped_seconds = 0.0
+
+    @property
+    def execution(self):
+        return "parallel" if self.kernel.parallel else "serial"
+
+    def set_execution(self, execution, threads=None):
+        if execution not in ("serial", "parallel"):
+            raise ValueError("Execution must be serial or parallel")
+        threads = self.kernel.threads if threads is None else threads
+        if not isinstance(threads, int) or not 1 <= threads <= 256:
+            raise ValueError("Thread count must be an integer in [1, 256]")
+        self.kernel.set_execution(execution == "parallel", threads)
+
+    def toggle_execution(self):
+        self.set_execution("serial" if self.kernel.parallel else "parallel")
 
     def ignite(self, u, v):
         self.kernel.ignite(float(u), float(v), self.ignition_radius)

@@ -5,7 +5,7 @@ parallel computing, correctness and honest performance measurement.
 
 ## Windows / VS Code setup
 
-This project requires 64-bit Python 3.11; this project supports 3.11–3.12. Install Visual Studio
+Use 64-bit Python 3.11–3.12 (3.11 recommended). Install Visual Studio
 2022 Community or Build Tools with **Desktop development with C++**, the MSVC
 x64/x86 toolset and a Windows SDK. An existing Visual Studio installation needs
 that workload; the editor alone is insufficient. In PowerShell:
@@ -25,16 +25,28 @@ OpenCV needs a desktop display; a headless package cannot show this demo.
 The editable install compiles the extension with CMake through scikit-build-core.
 Build dependencies provide CMake automatically if needed. Python edits take effect
 on restart; after any C++ or CMake edit, close the demo and repeat `pip install
--e '.[dev]'` to rebuild. This uses a native Windows compiler and Python ABI even
-when launched from Cygwin; do not mix Cygwin Python/GCC with this Windows venv.
-If an environment selects the wrong CMake generator, prefix the Bash install
-command with `CMAKE_GENERATOR='Visual Studio 17 2022'` (PowerShell:
-`$env:CMAKE_GENERATOR = 'Visual Studio 17 2022'`).
+-e '.[dev]'` to rebuild. Use a native Windows compiler with Windows Python.
+If the wrong CMake generator is selected, set
+`$env:CMAKE_GENERATOR = 'Visual Studio 17 2022'` in PowerShell before installing.
 
 Linux needs a C++17 compiler such as GCC and Python development headers; macOS
-needs Xcode Command Line Tools. CMake 3.20+ is required. No OpenMP runtime or
-compiler OpenMP support is required in the current serial stage. The build uses
+needs Xcode Command Line Tools. CMake 3.20+ is required. OpenMP is detected
+automatically using [CMake's FindOpenMP module](https://cmake.org/cmake/help/latest/module/FindOpenMP.html).
+MSVC provides [OpenMP support](https://learn.microsoft.com/en-us/cpp/build/reference/openmp-enable-openmp-2-0-support?view=msvc-170)
+with the C++ workload; GCC needs its OpenMP runtime, while Clang may need a
+separate libomp installation. Without OpenMP the package builds serial-only;
+requesting parallel execution then produces an error rather than silently
+running serially. The build uses
 [pybind11's documented CMake packaging approach](https://pybind11.readthedocs.io/en/stable/compiling.html).
+
+To explicitly disable OpenMP (for example on a compiler without support):
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]" --config-settings "cmake.define.FACIAL_FIRE_OPENMP=OFF"
+```
+
+Use the same command with `ON` to re-enable detection. This setting persists in
+the local CMake build cache. Restart the demo after rebuilding.
 
 The explicit download fetches Google's version-1 `face_landmarker.task` bundle
 into `models/` and prints its SHA256 for provenance. Models are ignored by Git.
@@ -49,13 +61,14 @@ and `num_faces=1` enable tracking and one-face smoothing.
 
 ## Controls
 
-| Control | Stage 2 behavior |
+| Control | Behavior |
 | --- | --- |
 | Left click inside face | Add an ignition seed at that face location |
 | I | Ignite the default center location |
 | Space | Pause/resume simulation (tracking continues) |
 | R | Clear both simulation buffers; does not change pause/speed |
 | + / = and - | Increase/decrease spread speed by 2, within 0–60 |
+| P | Switch serial/OpenMP execution without resetting the effect |
 | O | Toggle overlay visibility; simulation continues |
 | D | Toggle face-outline debug view |
 | Q / Escape / close window | Quit and release camera |
@@ -68,10 +81,10 @@ The preview is mirrored; use `--no-mirror` to disable this. Capture dimensions
 are requests and may differ on your hardware. If capture fails, try `--camera 1`,
 close other camera apps and check Windows camera permissions for desktop apps.
 
-Start with an empty effect, then click or press I. For example, in Cygwin:
+Start with an empty effect, then click or press I. For example:
 
-```bash
-./.venv/Scripts/python.exe -m facial_fire.app --grid-size 128 --spread-speed 12 --cooling 0.4 --simulation-hz 60 --loss-timeout 2 --ignition-radius 0.025 --seed 1
+```powershell
+.\.venv\Scripts\python.exe -m facial_fire.app --grid-size 128 --spread-speed 12 --cooling 0.4 --simulation-hz 60 --loss-timeout 2 --ignition-radius 0.025 --seed 1 --execution parallel --threads 4
 ```
 
 Grid size is 2–2048 per axis (128 recommended); speed and cooling are rates in
@@ -85,7 +98,31 @@ is allowed, but the seed will not spread until resumed.
 **Perimeter growth is now the default.** Choose another `--seed` for a different
 irregular front; resetting repeats the same seed's sequence. Use `--spread-mode
 smooth` to compare with the original uniform four-neighbor spread. Both modes
-remain serial C++ and use the same fixed simulation clock and tracking-loss policy.
+support serial and OpenMP execution and use the same fixed simulation clock and
+tracking-loss policy.
+
+## Execution modes
+
+Serial execution is the default. Start with `--execution parallel --threads 4`
+to use OpenMP, or press P while the demo is running. Thread counts are integers
+in 1–256; four is the default request. The serial path always uses one thread.
+The overlay shows the last parallel update's actual/requested thread counts;
+the runtime may provide fewer workers because of resource or environment limits.
+Before the first parallel update, the last-update count is still one.
+
+Both implementations call the same cell rule. OpenMP assigns distinct rows with
+`schedule(static)`; all workers read `current`, each writes only its own `next`
+cells, and the completion barrier precedes the buffer swap and tick increment.
+There are no cross-cell reductions or shared random-generator writes. Switching
+execution or thread count preserves the grid and random sequence. Native methods
+keep the Python GIL to prevent simultaneous Python mutation of one instance;
+OpenMP workers still run the cell calculations concurrently.
+
+Equal initial conditions, seeds, parameters and tick counts produce bitwise
+equal serial/parallel output within the same build. This does not promise equal
+results across compilers or hardware. Parallel execution can be slower on small
+grids due to thread coordination overhead; no speedup is claimed without a
+simulation-only benchmark.
 
 ## Architecture
 
@@ -93,7 +130,7 @@ remain serial C++ and use the same fixed simulation clock and tracking-loss poli
 maps canonical UV anchors onto outer eyes and chin, exposes an inverse for clicks
 and rasterizes the ordered face oval. `rendering.py` warps a canonical intensity
 texture and clips alpha after interpolation to prevent background leakage.
-`cpp/simulation.cpp` owns the deterministic serial update, ignition and buffers;
+`cpp/simulation.cpp` owns the shared cell rule, serial/OpenMP loops, ignition and buffers;
 `cpp/bindings.cpp` exposes it through pybind11. `simulation.py` owns the fixed-step
 clock, pause and loss policy. `app.py` owns capture, UI, cleanup and controls.
 Tests use synthetic landmarks;
@@ -128,7 +165,7 @@ irregular stochastic growth front rather than a physically realistic flame.
 
 Random draws use a 64-bit integer mixer of `(seed, simulation_tick, cell_index)`
 and its top 24 bits, with no global `srand()/rand()` state. The same cell and tick
-will receive the same draw irrespective of traversal order, supporting future
+will receive the same draw irrespective of traversal order, supporting
 serial/OpenMP equivalence. `reset()` and `set_grid()` rewind the tick counter;
 additional click ignitions do not rewind it. Seeds are unsigned 64-bit integers.
 
@@ -163,13 +200,13 @@ identity across different compilers/hardware is not promised.
 
 ## Verification and limitations
 
-Run `.\.venv\Scripts\python.exe -m pytest` and then the manual checklist.
+Run `.\.venv\Scripts\python.exe -m pytest`.
 Tests cover anchor correspondence, inverse mapping, motion/rotation/scale,
 invalid geometry, off-frame clipping, zero intensity, unchanged input and exact
 unchanged pixels outside the mask. Synthetic tests cannot establish webcam
 tracking quality or camera performance.
 
-Stage 2 also tests the native kernel against an independent NumPy reference,
+Tests also check the smooth native kernel against an independent NumPy reference,
 single-step synchronous updates, corners/no wrapping, repeatability, both-buffer
 reset, cooling, bounds/input validation, owned snapshots, fixed-step frame-rate
 independence, pause/resume, tracking-loss timeout and bounded stall recovery.
@@ -177,6 +214,19 @@ independence, pause/resume, tracking-loss timeout and bounded stall recovery.
 Perimeter tests additionally cover identical/different seeds, irregularity,
 connected growth, multiple ignition regions, one-tick frontier confinement,
 diagonal distance weighting, corner clipping and random-sequence reset.
+
+OpenMP tests compare grids exactly after each tick across both spread modes,
+square/rectangular grids and 1/2/4/8 requested threads, including more threads
+than rows. They also check switching execution and thread counts, batch versus
+individual ticks, reset, fixed-step scheduling and timeout clearing. Parallel
+checks skip on serial-only builds; rejection of unavailable parallel execution
+is tested there instead.
+
+For a manual check, ignite the face, press Space, then P: the frozen pattern
+should remain unchanged. Resume and confirm spreading continues. Try both spread
+modes, change `--threads` between launches, and check that reset and short/long
+tracking loss still behave as described. Automated tests do not verify webcam
+appearance, frame latency or tracker quality.
 
 Target one face with moderate movement and good lighting. The affine mapping
 does not model depth, strong yaw/pitch or facial expression deformation. The oval

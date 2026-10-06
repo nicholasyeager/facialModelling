@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#ifdef FACIAL_FIRE_HAS_OPENMP
+#include <omp.h>
+#endif
 
 namespace facial_fire {
 namespace {
@@ -13,7 +16,7 @@ void require_range(float value, float low, float high, const char* name) {
 }
 
 // A counter-based draw: no shared RNG state or dependence on traversal order.
-// Unsigned overflow is intentional. A future parallel loop gets the same draw
+// Unsigned overflow is intentional. The parallel loop gets the same draw
 // for each (seed, tick, cell) as the serial loop.
 float random_unit(std::uint64_t seed, std::uint64_t tick, std::size_t cell) {
     std::uint64_t bits = seed + tick * 0xD1B54A32D192ED03ULL
@@ -46,6 +49,26 @@ void Simulation::set_grid(const float* values) {
     std::copy(values, values + current_.size(), current_.begin());
     std::fill(next_.begin(), next_.end(), 0.0f);
     tick_ = 0;
+}
+
+bool Simulation::openmp_available() {
+#ifdef FACIAL_FIRE_HAS_OPENMP
+    return true;
+#else
+    return false;
+#endif
+}
+
+void Simulation::set_execution(bool parallel, int threads) {
+    if (threads < 1 || threads > 256) {
+        throw std::invalid_argument("Thread count must be between 1 and 256");
+    }
+    if (parallel && !openmp_available()) {
+        throw std::runtime_error("OpenMP is unavailable in this build; use serial execution or rebuild with OpenMP");
+    }
+    // Validate before mutation; switching never changes grid or RNG tick.
+    parallel_ = parallel;
+    threads_ = threads;
 }
 
 void Simulation::reset() {
@@ -85,51 +108,82 @@ void Simulation::step(float dt, float spread_speed, float cooling, int steps) {
     }
     if (dt == 0.0f) return;  // No simulation time: do not consume random draws.
     for (int iteration = 0; iteration < steps; ++iteration) {
-        update_serial(dt, spread_speed, cooling);
+        if (parallel_) update_parallel(dt, spread_speed, cooling);
+        else update_serial(dt, spread_speed, cooling);
+        // All workers have completed before changing the shared buffers/tick.
+        current_.swap(next_);
+        ++tick_;
     }
 }
 
 void Simulation::update_serial(float dt, float spread_speed, float cooling) {
+    last_threads_ = 1;
     for (int row = 0; row < rows_; ++row) {
         for (int col = 0; col < cols_; ++col) {
-            const auto i = static_cast<std::size_t>(row) * cols_ + col;
-            float neighbor = 0.0f;  // Missing neighbors contribute zero; no wraparound.
-            if (row > 0) neighbor = std::max(neighbor, current_[i - cols_]);
-            if (row + 1 < rows_) neighbor = std::max(neighbor, current_[i + cols_]);
-            if (col > 0) neighbor = std::max(neighbor, current_[i - 1]);
-            if (col + 1 < cols_) neighbor = std::max(neighbor, current_[i + 1]);
-            if (perimeter_) {
-                // Diagonals reduce the four-neighbor diamond shape. Weight by
-                // inverse distance so diagonal advance is less likely.
-                constexpr float diagonal_weight = 0.70710678f;
-                if (row > 0 && col > 0)
-                    neighbor = std::max(neighbor, diagonal_weight * current_[i - cols_ - 1]);
-                if (row > 0 && col + 1 < cols_)
-                    neighbor = std::max(neighbor, diagonal_weight * current_[i - cols_ + 1]);
-                if (row + 1 < rows_ && col > 0)
-                    neighbor = std::max(neighbor, diagonal_weight * current_[i + cols_ - 1]);
-                if (row + 1 < rows_ && col + 1 < cols_)
-                    neighbor = std::max(neighbor, diagonal_weight * current_[i + cols_ + 1]);
-            }
-            const float value = current_[i];
-            const float growth = spread_speed * neighbor * (1.0f - value);
-            float updated = value + dt * (growth - cooling * value);
-            if (perimeter_ && value < 0.25f) {
-                // Only the current surface may activate new cells. Other cold
-                // cells simply cool: no random islands or same-tick cascades.
-                updated = value * (1.0f - dt * cooling);
-                if (neighbor >= 0.25f) {
-                    const float probability = -std::expm1(-spread_speed * dt * neighbor);
-                    if (random_unit(seed_, tick_, i) < probability) {
-                        updated = std::max(updated, std::max(0.35f, 0.75f * neighbor));
-                    }
-                }
-            }
-            next_[i] = std::clamp(updated, 0.0f, 1.0f);
+            next_[static_cast<std::size_t>(row) * cols_ + col] = update_cell(row, col, dt, spread_speed, cooling);
         }
     }
-    current_.swap(next_);
-    ++tick_;
+}
+
+void Simulation::update_parallel(float dt, float spread_speed, float cooling) {
+#ifdef FACIAL_FIRE_HAS_OPENMP
+    // Each worker owns distinct rows in next_. current_ and all parameters stay
+    // read-only until the parallel region's implicit completion barrier.
+    #pragma omp parallel num_threads(threads_)
+    {
+        #pragma omp single
+        last_threads_ = omp_get_num_threads();
+        #pragma omp for schedule(static)
+        for (int row = 0; row < rows_; ++row) {
+            for (int col = 0; col < cols_; ++col) {
+                next_[static_cast<std::size_t>(row) * cols_ + col] = update_cell(row, col, dt, spread_speed, cooling);
+            }
+        }
+    }
+#else
+    // set_execution prevents this path on builds without OpenMP.
+    (void)dt;
+    (void)spread_speed;
+    (void)cooling;
+    throw std::runtime_error("OpenMP is unavailable in this build");
+#endif
+}
+
+float Simulation::update_cell(int row, int col, float dt, float spread_speed, float cooling) const {
+    const auto i = static_cast<std::size_t>(row) * cols_ + col;
+    float neighbor = 0.0f;  // Missing neighbors contribute zero; no wraparound.
+    if (row > 0) neighbor = std::max(neighbor, current_[i - cols_]);
+    if (row + 1 < rows_) neighbor = std::max(neighbor, current_[i + cols_]);
+    if (col > 0) neighbor = std::max(neighbor, current_[i - 1]);
+    if (col + 1 < cols_) neighbor = std::max(neighbor, current_[i + 1]);
+    if (perimeter_) {
+        // Diagonals reduce the four-neighbor diamond shape. Weight by
+        // inverse distance so diagonal advance is less likely.
+        constexpr float diagonal_weight = 0.70710678f;
+        if (row > 0 && col > 0)
+            neighbor = std::max(neighbor, diagonal_weight * current_[i - cols_ - 1]);
+        if (row > 0 && col + 1 < cols_)
+            neighbor = std::max(neighbor, diagonal_weight * current_[i - cols_ + 1]);
+        if (row + 1 < rows_ && col > 0)
+            neighbor = std::max(neighbor, diagonal_weight * current_[i + cols_ - 1]);
+        if (row + 1 < rows_ && col + 1 < cols_)
+            neighbor = std::max(neighbor, diagonal_weight * current_[i + cols_ + 1]);
+    }
+    const float value = current_[i];
+    const float growth = spread_speed * neighbor * (1.0f - value);
+    float updated = value + dt * (growth - cooling * value);
+    if (perimeter_ && value < 0.25f) {
+        // Only the current surface may activate new cells. Other cold
+        // cells simply cool: no random islands or same-tick cascades.
+        updated = value * (1.0f - dt * cooling);
+        if (neighbor >= 0.25f) {
+            const float probability = -std::expm1(-spread_speed * dt * neighbor);
+            if (random_unit(seed_, tick_, i) < probability) {
+                updated = std::max(updated, std::max(0.35f, 0.75f * neighbor));
+            }
+        }
+    }
+    return std::clamp(updated, 0.0f, 1.0f);
 }
 
 }  // namespace facial_fire
