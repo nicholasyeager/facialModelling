@@ -60,11 +60,11 @@ def main() -> None:
             display = blend_effect(frame, preview, mapping) if mapping is not None and enabled else frame.copy()
             if debug and mapping is not None:
                 contours, _ = cv2.findContours(mapping.mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                cv2.drawContours(display, contours, -1, (0, 255, 0), 1)
+                cv2.drawContours(display, contours, -1, (0, 255, 0), 2)
             status = "Face tracked" if mapping is not None else "No face - overlay hidden"
-            cv2.putText(display, status, (12, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.putText(display, status, (12, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
             cv2.putText(display, "Click: move tint | O: toggle | R: reset | D: outline | Q: quit",
-                        (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                        (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
             cv2.imshow(window, display)
             key = cv2.waitKey(1) & 0xFF
             if key in (27, ord("q")) or cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) < 1:
