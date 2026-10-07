@@ -121,8 +121,8 @@ OpenMP workers still run the cell calculations concurrently.
 Equal initial conditions, seeds, parameters and tick counts produce bitwise
 equal serial/parallel output within the same build. This does not promise equal
 results across compilers or hardware. Parallel execution can be slower on small
-grids due to thread coordination overhead; no speedup is claimed without a
-simulation-only benchmark.
+grids due to thread coordination overhead. See the simulation-only measurements
+below for observed results rather than assuming that more threads are faster.
 
 ## Architecture
 
@@ -197,6 +197,54 @@ recorded in `Propagation.dropped_seconds`, rather than building a backlog. The
 first frame after pause/loss establishes a fresh clock baseline. Identical seeds,
 parameters and tick counts give repeatable results on the same build; bitwise
 identity across different compilers/hardware is not promised.
+
+## Simulation benchmarks
+
+Run a headless comparison of both spread modes across grid sizes and thread counts:
+
+```powershell
+.\.venv\Scripts\python.exe -m facial_fire.benchmark --sizes 64 128 256 512 1024 --threads 1 2 4 8 --steps 300 --repeats 7 --warmup 30
+```
+
+The command saves JSON (every sample, median/min/max, environment and native binary
+hash) and a Markdown report under `benchmark_results/`. Use `--output path.json`
+to select a destination, `--modes perimeter` for only the default spread mode, and
+`--cpu-label` / `--build-label` to record hardware and compiler details. OpenMP
+must be available for these comparisons. Run with the webcam demo closed and
+record power mode/background load when comparing machines or builds.
+
+Every trial starts with identical seeded ignition disks and random tick state.
+Each variant receives untimed warmup ticks; trial order is interleaved using a
+seeded shuffle. Timing covers one native batch of fixed ticks, including OpenMP
+coordination and buffer swaps. Capture, tracking, rendering, reset, grid copies,
+snapshots and correctness checks are excluded. Each measured output is checked
+bitwise against serial before being accepted.
+
+Runtime is the median batch duration. Cell updates/s is `size² * ticks / seconds`;
+speedup is `serial_median / parallel_median`; parallel efficiency is
+`speedup / requested_threads`. Reports also record actual worker counts.
+
+Example measurements on an AMD Ryzen 9 5900HX (8 cores / 16 logical CPUs), Windows
+x64, MSVC 19.39.33523, Release build. Default perimeter mode; 300 ticks per trial,
+seven trials, 30 warmup ticks. Actual workers matched requests in this run:
+
+| Grid | Serial median ms | 4-thread median ms | Speedup | Efficiency | Parallel M cell updates/s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 64×64 | 6.293 | 2.604 | 2.42× | 60.4% | 471.89 |
+| 128×128 | 25.894 | 9.654 | 2.68× | 67.1% | 509.15 |
+| 256×256 | 103.680 | 36.048 | 2.88× | 71.9% | 545.41 |
+| 512×512 | 403.832 | 127.229 | 3.17× | 79.4% | 618.13 |
+| 1024×1024 | 1563.122 | 489.155 | 3.20× | 79.9% | 643.09 |
+
+At 128×128, eight threads achieved 2.87× speedup, only slightly above four. At
+64×64, four were faster than eight. The one-thread OpenMP path was slower than
+the plain serial loop. See the [full measurements and methodology](benchmarks/ryzen_5900hx.md)
+and [raw samples](benchmarks/ryzen_5900hx.json) for both modes and all thread counts.
+
+These results describe this workload on one machine. The fixed tick count gives
+different active fractions across resolutions. Power mode, thermals and competing
+processes affect measurements; repeated runs can differ. Amortized ms/tick is
+simulation processing time, not webcam FPS or end-to-end application latency.
 
 ## Verification and limitations
 

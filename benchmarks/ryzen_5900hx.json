@@ -1,0 +1,1343 @@
+{
+  "measured_at_utc": "2026-10-07T00:02:26.339227+00:00",
+  "configuration": {
+    "sizes": [
+      64,
+      128,
+      256,
+      512,
+      1024
+    ],
+    "threads": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "modes": [
+      "perimeter",
+      "smooth"
+    ],
+    "steps": 300,
+    "repeats": 7,
+    "warmup": 30,
+    "seed": 1,
+    "dt": 0.016666666666666666,
+    "spread_speed": 12.0,
+    "cooling": 0.4
+  },
+  "environment": {
+    "platform": "Windows-10-10.0.26300-SP0",
+    "cpu_label": "AMD Ryzen 9 5900HX (8 cores, 16 logical CPUs)",
+    "logical_cpus": 16,
+    "python": "3.11.9",
+    "numpy": "2.2.6",
+    "package_version": "0.3.0",
+    "build_label": "Windows x64; MSVC 19.39.33523; CMake 3.31.10; Release; OpenMP",
+    "openmp_available": true,
+    "native_sha256": "d24542ee6947e56fa6ae32cc3a610b5539c8dff27e210f5443da328502fccacb",
+    "openmp_environment": {}
+  },
+  "results": [
+    {
+      "mode": "perimeter",
+      "grid_size": 64,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0107225,
+        0.0061883,
+        0.0062927,
+        0.0063552,
+        0.0062796,
+        0.0062734,
+        0.0063617
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0062927,
+      "min_seconds": 0.0061883,
+      "max_seconds": 0.0107225,
+      "milliseconds_per_tick": 0.020975666666666667,
+      "cell_updates_per_second": 195273888.7917746,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 64,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0066686,
+        0.0065149,
+        0.0070539,
+        0.0065199,
+        0.006507,
+        0.0065452,
+        0.0070951
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0065452,
+      "min_seconds": 0.006507,
+      "max_seconds": 0.0070951,
+      "milliseconds_per_tick": 0.021817333333333334,
+      "cell_updates_per_second": 187740634.3580028,
+      "speedup": 0.9614221108598667,
+      "parallel_efficiency": 0.9614221108598667
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 64,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.0036502,
+        0.0039588,
+        0.0046802,
+        0.0039975,
+        0.0050814,
+        0.0036641,
+        0.0037148
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0039588,
+      "min_seconds": 0.0036502,
+      "max_seconds": 0.0050814,
+      "milliseconds_per_tick": 0.013196000000000001,
+      "cell_updates_per_second": 310397090.027281,
+      "speedup": 1.5895473375770435,
+      "parallel_efficiency": 0.7947736687885217
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 64,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.0025319,
+        0.0025975,
+        0.0051596,
+        0.0024256,
+        0.0031989,
+        0.002604,
+        0.0028486
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.002604,
+      "min_seconds": 0.0024256,
+      "max_seconds": 0.0051596,
+      "milliseconds_per_tick": 0.00868,
+      "cell_updates_per_second": 471889400.921659,
+      "speedup": 2.416551459293395,
+      "parallel_efficiency": 0.6041378648233487
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 64,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.003394,
+        0.0032664,
+        0.0031672,
+        0.002889,
+        0.0028428,
+        0.0034878,
+        0.0034563
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0032664,
+      "min_seconds": 0.0028428,
+      "max_seconds": 0.0034878,
+      "milliseconds_per_tick": 0.010888,
+      "cell_updates_per_second": 376193975.01836884,
+      "speedup": 1.926493999510164,
+      "parallel_efficiency": 0.2408117499387705
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 128,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0257838,
+        0.0258942,
+        0.0334895,
+        0.0252286,
+        0.0261702,
+        0.02547,
+        0.0344802
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0258942,
+      "min_seconds": 0.0252286,
+      "max_seconds": 0.0344802,
+      "milliseconds_per_tick": 0.08631399999999999,
+      "cell_updates_per_second": 189818569.4093658,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 128,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0271414,
+        0.0274109,
+        0.0268259,
+        0.0267849,
+        0.026783,
+        0.0269946,
+        0.026828
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.026828,
+      "min_seconds": 0.026783,
+      "max_seconds": 0.0274109,
+      "milliseconds_per_tick": 0.08942666666666667,
+      "cell_updates_per_second": 183211570.00149098,
+      "speedup": 0.9651930818547785,
+      "parallel_efficiency": 0.9651930818547785
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 128,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.014005,
+        0.0149123,
+        0.0141891,
+        0.0140439,
+        0.0257145,
+        0.0164072,
+        0.0151819
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0149123,
+      "min_seconds": 0.014005,
+      "max_seconds": 0.0257145,
+      "milliseconds_per_tick": 0.049707666666666664,
+      "cell_updates_per_second": 329607102.8613963,
+      "speedup": 1.7364323410875586,
+      "parallel_efficiency": 0.8682161705437793
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 128,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.0096538,
+        0.00869,
+        0.0124137,
+        0.0079041,
+        0.012512,
+        0.0117888,
+        0.0096007
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0096538,
+      "min_seconds": 0.0079041,
+      "max_seconds": 0.012512,
+      "milliseconds_per_tick": 0.03217933333333334,
+      "cell_updates_per_second": 509146657.2748555,
+      "speedup": 2.68228055273571,
+      "parallel_efficiency": 0.6705701381839275
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 128,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.0080534,
+        0.0075382,
+        0.0169874,
+        0.0090306,
+        0.0090702,
+        0.0095485,
+        0.0088698
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0090306,
+      "min_seconds": 0.0075382,
+      "max_seconds": 0.0169874,
+      "milliseconds_per_tick": 0.030102,
+      "cell_updates_per_second": 544282771.9088433,
+      "speedup": 2.8673842269616636,
+      "parallel_efficiency": 0.35842302837020795
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 256,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.1254316,
+        0.098172,
+        0.1223074,
+        0.09816,
+        0.0975245,
+        0.1036799,
+        0.113972
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.1036799,
+      "min_seconds": 0.0975245,
+      "max_seconds": 0.1254316,
+      "milliseconds_per_tick": 0.3455996666666667,
+      "cell_updates_per_second": 189629812.52875435,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 256,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.1053971,
+        0.1062479,
+        0.109915,
+        0.1097167,
+        0.1036695,
+        0.1194802,
+        0.1066375
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.1066375,
+      "min_seconds": 0.1036695,
+      "max_seconds": 0.1194802,
+      "milliseconds_per_tick": 0.3554583333333333,
+      "cell_updates_per_second": 184370413.78501934,
+      "speedup": 0.9722649161880202,
+      "parallel_efficiency": 0.9722649161880202
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 256,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.0558004,
+        0.0560796,
+        0.0560549,
+        0.0547163,
+        0.0847397,
+        0.0738218,
+        0.0554841
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0560549,
+      "min_seconds": 0.0547163,
+      "max_seconds": 0.0847397,
+      "milliseconds_per_tick": 0.18684966666666666,
+      "cell_updates_per_second": 350741861.9960075,
+      "speedup": 1.8496135039042083,
+      "parallel_efficiency": 0.9248067519521042
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 256,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.0309369,
+        0.0315438,
+        0.0360476,
+        0.0466402,
+        0.0549817,
+        0.0565721,
+        0.0301935
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0360476,
+      "min_seconds": 0.0301935,
+      "max_seconds": 0.0565721,
+      "milliseconds_per_tick": 0.12015866666666665,
+      "cell_updates_per_second": 545412177.2323261,
+      "speedup": 2.876194254263807,
+      "parallel_efficiency": 0.7190485635659517
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 256,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.0302836,
+        0.0294507,
+        0.03238,
+        0.028297,
+        0.0299845,
+        0.0414939,
+        0.0314775
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0302836,
+      "min_seconds": 0.028297,
+      "max_seconds": 0.0414939,
+      "milliseconds_per_tick": 0.10094533333333333,
+      "cell_updates_per_second": 649222681.5834312,
+      "speedup": 3.4236319327953084,
+      "parallel_efficiency": 0.42795399159941355
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 512,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.4246678,
+        0.4027885,
+        0.43202,
+        0.3935284,
+        0.3974931,
+        0.4038322,
+        0.4482778
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.4038322,
+      "min_seconds": 0.3935284,
+      "max_seconds": 0.4482778,
+      "milliseconds_per_tick": 1.3461073333333333,
+      "cell_updates_per_second": 194742271.666301,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 512,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.424149,
+        0.4308173,
+        0.4198482,
+        0.4139258,
+        0.4212312,
+        0.4121798,
+        0.4201905
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.4201905,
+      "min_seconds": 0.4121798,
+      "max_seconds": 0.4308173,
+      "milliseconds_per_tick": 1.400635,
+      "cell_updates_per_second": 187160823.4836342,
+      "speedup": 0.9610693245087644,
+      "parallel_efficiency": 0.9610693245087644
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 512,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.2139696,
+        0.2213,
+        0.2172405,
+        0.2164546,
+        0.2234442,
+        0.2314217,
+        0.2137278
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.2172405,
+      "min_seconds": 0.2137278,
+      "max_seconds": 0.2314217,
+      "milliseconds_per_tick": 0.724135,
+      "cell_updates_per_second": 362009846.23033,
+      "speedup": 1.8589176511746197,
+      "parallel_efficiency": 0.9294588255873099
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 512,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.1378167,
+        0.1240544,
+        0.1253748,
+        0.1191168,
+        0.1272285,
+        0.167404,
+        0.1273097
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.1272285,
+      "min_seconds": 0.1191168,
+      "max_seconds": 0.167404,
+      "milliseconds_per_tick": 0.424095,
+      "cell_updates_per_second": 618125655.8082505,
+      "speedup": 3.174070275134895,
+      "parallel_efficiency": 0.7935175687837237
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 512,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.1125795,
+        0.1109039,
+        0.1139591,
+        0.111171,
+        0.1092765,
+        0.1137147,
+        0.1108855
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.111171,
+      "min_seconds": 0.1092765,
+      "max_seconds": 0.1139591,
+      "milliseconds_per_tick": 0.37057,
+      "cell_updates_per_second": 707407507.3535364,
+      "speedup": 3.6325318653245895,
+      "parallel_efficiency": 0.4540664831655737
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 1024,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        1.5508457,
+        1.5631224,
+        1.5673542,
+        1.541329,
+        1.5558052,
+        1.5726165,
+        1.5995446
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 1.5631224,
+      "min_seconds": 1.541329,
+      "max_seconds": 1.5995446,
+      "milliseconds_per_tick": 5.210408,
+      "cell_updates_per_second": 201246428.30273563,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 1024,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        1.6713371,
+        1.6591985,
+        1.6588969,
+        1.6434315,
+        1.6609919,
+        1.6731424,
+        1.6524545
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 1.6591985,
+      "min_seconds": 1.6434315,
+      "max_seconds": 1.6731424,
+      "milliseconds_per_tick": 5.530661666666666,
+      "cell_updates_per_second": 189593228.29667458,
+      "speedup": 0.9420948729160494,
+      "parallel_efficiency": 0.9420948729160494
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 1024,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.885725,
+        0.8403022,
+        0.832357,
+        0.8633306,
+        0.8663313,
+        0.853676,
+        0.8396857
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.853676,
+      "min_seconds": 0.832357,
+      "max_seconds": 0.885725,
+      "milliseconds_per_tick": 2.8455866666666667,
+      "cell_updates_per_second": 368492027.4202391,
+      "speedup": 1.8310487819734886,
+      "parallel_efficiency": 0.9155243909867443
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 1024,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.4640628,
+        0.5093407,
+        0.466727,
+        0.4891554,
+        0.5602374,
+        0.5239711,
+        0.4879496
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.4891554,
+      "min_seconds": 0.4640628,
+      "max_seconds": 0.5602374,
+      "milliseconds_per_tick": 1.6305180000000001,
+      "cell_updates_per_second": 643093789.8263006,
+      "speedup": 3.1955538056004285,
+      "parallel_efficiency": 0.7988884514001071
+    },
+    {
+      "mode": "perimeter",
+      "grid_size": 1024,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.4312687,
+        0.4389342,
+        0.4445432,
+        0.4303862,
+        0.368681,
+        0.4197282,
+        0.4108795
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.4303862,
+      "min_seconds": 0.368681,
+      "max_seconds": 0.4445432,
+      "milliseconds_per_tick": 1.4346206666666665,
+      "cell_updates_per_second": 730908193.6177322,
+      "speedup": 3.63190641335619,
+      "parallel_efficiency": 0.45398830166952375
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 64,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0038275,
+        0.0033509,
+        0.0035531,
+        0.0033844,
+        0.0034051,
+        0.0034291,
+        0.0036892
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0034291,
+      "min_seconds": 0.0033509,
+      "max_seconds": 0.0038275,
+      "milliseconds_per_tick": 0.011430333333333334,
+      "cell_updates_per_second": 358344755.18357587,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 64,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0039644,
+        0.0036621,
+        0.003888,
+        0.0037124,
+        0.0037859,
+        0.0038272,
+        0.0039565
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0038272,
+      "min_seconds": 0.0036621,
+      "max_seconds": 0.0039644,
+      "milliseconds_per_tick": 0.012757333333333332,
+      "cell_updates_per_second": 321070234.1137124,
+      "speedup": 0.8959813963210703,
+      "parallel_efficiency": 0.8959813963210703
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 64,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.0024062,
+        0.0025226,
+        0.0026954,
+        0.0026648,
+        0.0026008,
+        0.0028444,
+        0.0024982
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0026008,
+      "min_seconds": 0.0024062,
+      "max_seconds": 0.0028444,
+      "milliseconds_per_tick": 0.008669333333333333,
+      "cell_updates_per_second": 472470009.2279299,
+      "speedup": 1.3184789295601353,
+      "parallel_efficiency": 0.6592394647800677
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 64,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.001738,
+        0.0018558,
+        0.0017188,
+        0.0017543,
+        0.001714,
+        0.0019624,
+        0.0026651
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0017543,
+      "min_seconds": 0.001714,
+      "max_seconds": 0.0026651,
+      "milliseconds_per_tick": 0.005847666666666668,
+      "cell_updates_per_second": 700450322.0657812,
+      "speedup": 1.9546827794561932,
+      "parallel_efficiency": 0.4886706948640483
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 64,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.0018351,
+        0.0022357,
+        0.0019044,
+        0.0022266,
+        0.0017958,
+        0.0022025,
+        0.0021023
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0021023,
+      "min_seconds": 0.0017958,
+      "max_seconds": 0.0022357,
+      "milliseconds_per_tick": 0.007007666666666667,
+      "cell_updates_per_second": 584502687.5327022,
+      "speedup": 1.6311182990058506,
+      "parallel_efficiency": 0.20388978737573132
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 128,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0145262,
+        0.0144734,
+        0.0148641,
+        0.0137958,
+        0.0138033,
+        0.0135476,
+        0.0199526
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0144734,
+      "min_seconds": 0.0135476,
+      "max_seconds": 0.0199526,
+      "milliseconds_per_tick": 0.04824466666666667,
+      "cell_updates_per_second": 339602304.91798747,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 128,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0154167,
+        0.0157023,
+        0.0152651,
+        0.0151252,
+        0.0151934,
+        0.014787,
+        0.0148033
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0151934,
+      "min_seconds": 0.014787,
+      "max_seconds": 0.0157023,
+      "milliseconds_per_tick": 0.050644666666666664,
+      "cell_updates_per_second": 323508892.01890296,
+      "speedup": 0.9526110021456686,
+      "parallel_efficiency": 0.9526110021456686
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 128,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.0083862,
+        0.0085711,
+        0.0081365,
+        0.0081617,
+        0.0097893,
+        0.0091931,
+        0.0079806
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0083862,
+      "min_seconds": 0.0079806,
+      "max_seconds": 0.0097893,
+      "milliseconds_per_tick": 0.027954000000000003,
+      "cell_updates_per_second": 586105745.152751,
+      "speedup": 1.7258591495552218,
+      "parallel_efficiency": 0.8629295747776109
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 128,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.0051116,
+        0.0056116,
+        0.0053837,
+        0.0048759,
+        0.0050648,
+        0.0045853,
+        0.004747
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0050648,
+      "min_seconds": 0.0045853,
+      "max_seconds": 0.0056116,
+      "milliseconds_per_tick": 0.016882666666666667,
+      "cell_updates_per_second": 970462802.0849786,
+      "speedup": 2.8576449218132995,
+      "parallel_efficiency": 0.7144112304533249
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 128,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.0051364,
+        0.0049748,
+        0.005212,
+        0.0039474,
+        0.0048925,
+        0.0030799,
+        0.0031517
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0048925,
+      "min_seconds": 0.0030799,
+      "max_seconds": 0.005212,
+      "milliseconds_per_tick": 0.016308333333333334,
+      "cell_updates_per_second": 1004639754.7266223,
+      "speedup": 2.9582830863566683,
+      "parallel_efficiency": 0.36978538579458353
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 256,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0752852,
+        0.057203,
+        0.0686792,
+        0.0618521,
+        0.0576204,
+        0.055774,
+        0.0746589
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0618521,
+      "min_seconds": 0.055774,
+      "max_seconds": 0.0752852,
+      "milliseconds_per_tick": 0.20617366666666667,
+      "cell_updates_per_second": 317867946.2782994,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 256,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.0632048,
+        0.0644931,
+        0.0640145,
+        0.0646779,
+        0.0626997,
+        0.0636481,
+        0.0632937
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0636481,
+      "min_seconds": 0.0626997,
+      "max_seconds": 0.0646779,
+      "milliseconds_per_tick": 0.21216033333333334,
+      "cell_updates_per_second": 308898458.8699427,
+      "speedup": 0.971782346998575,
+      "parallel_efficiency": 0.971782346998575
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 256,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.0339053,
+        0.047557,
+        0.0355363,
+        0.0338562,
+        0.033678,
+        0.0327859,
+        0.033165
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0338562,
+      "min_seconds": 0.0327859,
+      "max_seconds": 0.047557,
+      "milliseconds_per_tick": 0.11285400000000001,
+      "cell_updates_per_second": 580714905.9847236,
+      "speedup": 1.826906150129075,
+      "parallel_efficiency": 0.9134530750645375
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 256,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.0175001,
+        0.0181282,
+        0.0243973,
+        0.0189264,
+        0.017941,
+        0.0209483,
+        0.0181248
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0181282,
+      "min_seconds": 0.0175001,
+      "max_seconds": 0.0243973,
+      "milliseconds_per_tick": 0.06042733333333333,
+      "cell_updates_per_second": 1084542315.2877836,
+      "speedup": 3.411927273529639,
+      "parallel_efficiency": 0.8529818183824097
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 256,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.0159339,
+        0.0108264,
+        0.0130485,
+        0.0192563,
+        0.0111572,
+        0.011724,
+        0.0165682
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0130485,
+      "min_seconds": 0.0108264,
+      "max_seconds": 0.0192563,
+      "milliseconds_per_tick": 0.043495,
+      "cell_updates_per_second": 1506747902.0577078,
+      "speedup": 4.740169368126605,
+      "parallel_efficiency": 0.5925211710158256
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 512,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.3075278,
+        0.2637982,
+        0.3748699,
+        0.3151241,
+        0.3609725,
+        0.2870446,
+        0.3015806
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.3075278,
+      "min_seconds": 0.2637982,
+      "max_seconds": 0.3748699,
+      "milliseconds_per_tick": 1.0250926666666667,
+      "cell_updates_per_second": 255727124.50711772,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 512,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        0.3410818,
+        0.3196781,
+        0.3715137,
+        0.3069224,
+        0.3315663,
+        0.321804,
+        0.3084669
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.321804,
+      "min_seconds": 0.3069224,
+      "max_seconds": 0.3715137,
+      "milliseconds_per_tick": 1.0726799999999999,
+      "cell_updates_per_second": 244382294.81299177,
+      "speedup": 0.9556369715727587,
+      "parallel_efficiency": 0.9556369715727587
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 512,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.1459204,
+        0.2033516,
+        0.2393097,
+        0.3451788,
+        0.2304946,
+        0.213133,
+        0.2082271
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.213133,
+      "min_seconds": 0.1459204,
+      "max_seconds": 0.3451788,
+      "milliseconds_per_tick": 0.7104433333333333,
+      "cell_updates_per_second": 368986501.3864582,
+      "speedup": 1.4428915278253487,
+      "parallel_efficiency": 0.7214457639126743
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 512,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.1036469,
+        0.1302302,
+        0.1352672,
+        0.1274678,
+        0.1212373,
+        0.103832,
+        0.1107969
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.1212373,
+      "min_seconds": 0.1036469,
+      "max_seconds": 0.1352672,
+      "milliseconds_per_tick": 0.40412433333333336,
+      "cell_updates_per_second": 648671654.6805315,
+      "speedup": 2.53657743945139,
+      "parallel_efficiency": 0.6341443598628475
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 512,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.0739064,
+        0.0661021,
+        0.0825657,
+        0.0832049,
+        0.0778194,
+        0.0636556,
+        0.0646125
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.0739064,
+      "min_seconds": 0.0636556,
+      "max_seconds": 0.0832049,
+      "milliseconds_per_tick": 0.24635466666666664,
+      "cell_updates_per_second": 1064091878.3758917,
+      "speedup": 4.161044239741078,
+      "parallel_efficiency": 0.5201305299676348
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 1024,
+      "execution": "serial",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        1.1450056,
+        1.0192251,
+        1.0731968,
+        1.0306854,
+        1.0155782,
+        1.0093215,
+        1.0990692
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 1.0306854,
+      "min_seconds": 1.0093215,
+      "max_seconds": 1.1450056,
+      "milliseconds_per_tick": 3.4356180000000003,
+      "cell_updates_per_second": 305207389.1800543,
+      "speedup": 1.0,
+      "parallel_efficiency": 1.0
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 1024,
+      "execution": "parallel",
+      "requested_threads": 1,
+      "actual_threads": [
+        1
+      ],
+      "samples_seconds": [
+        1.1263092,
+        1.0844889,
+        1.0778412,
+        1.0776078,
+        1.0742165,
+        1.1206566,
+        1.1098369
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 1.0844889,
+      "min_seconds": 1.0742165,
+      "max_seconds": 1.1263092,
+      "milliseconds_per_tick": 3.6149630000000004,
+      "cell_updates_per_second": 290065486.14743775,
+      "speedup": 0.950388150584114,
+      "parallel_efficiency": 0.950388150584114
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 1024,
+      "execution": "parallel",
+      "requested_threads": 2,
+      "actual_threads": [
+        2
+      ],
+      "samples_seconds": [
+        0.8275067,
+        0.6760064,
+        0.6606426,
+        0.7978306,
+        0.656143,
+        0.8163483,
+        0.8296868
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.7978306,
+      "min_seconds": 0.656143,
+      "max_seconds": 0.8296868,
+      "milliseconds_per_tick": 2.659435333333333,
+      "cell_updates_per_second": 394285202.8989613,
+      "speedup": 1.2918599512227285,
+      "parallel_efficiency": 0.6459299756113642
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 1024,
+      "execution": "parallel",
+      "requested_threads": 4,
+      "actual_threads": [
+        4
+      ],
+      "samples_seconds": [
+        0.4664903,
+        0.4558286,
+        0.4112428,
+        0.471072,
+        0.4096161,
+        0.4737165,
+        0.4054511
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.4558286,
+      "min_seconds": 0.4054511,
+      "max_seconds": 0.4737165,
+      "milliseconds_per_tick": 1.5194286666666665,
+      "cell_updates_per_second": 690112028.951233,
+      "speedup": 2.2611249052823807,
+      "parallel_efficiency": 0.5652812263205952
+    },
+    {
+      "mode": "smooth",
+      "grid_size": 1024,
+      "execution": "parallel",
+      "requested_threads": 8,
+      "actual_threads": [
+        8
+      ],
+      "samples_seconds": [
+        0.2579051,
+        0.2587403,
+        0.2597968,
+        0.2611662,
+        0.261844,
+        0.2549753,
+        0.264368
+      ],
+      "correctness": "bitwise_equal",
+      "median_seconds": 0.2597968,
+      "min_seconds": 0.2549753,
+      "max_seconds": 0.264368,
+      "milliseconds_per_tick": 0.8659893333333334,
+      "cell_updates_per_second": 1210841703.977878,
+      "speedup": 3.9672751935358717,
+      "parallel_efficiency": 0.49590939919198396
+    }
+  ]
+}
