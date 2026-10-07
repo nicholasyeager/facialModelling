@@ -187,6 +187,9 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled):
         def size(self, width, height):
             return width, height
 
+        def is_open(self):
+            return True
+
     class ObservedPropagation(Propagation):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
@@ -201,14 +204,26 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled):
     monkeypatch.setattr(app, "DemoWindow", FakeWindow)
     monkeypatch.setattr(app.cv2, "setMouseCallback", lambda *args: None)
     monkeypatch.setattr(app.cv2, "imshow", lambda *args: None)
-    monkeypatch.setattr(app.cv2, "waitKey", lambda delay: ord("q"))
+    keys = iter(map(ord, "dkdkq"))
+    overlays = []
+    rendered = []
+    monkeypatch.setattr(app.cv2, "drawContours", lambda *args: overlays.append("face"))
+    monkeypatch.setattr(app, "draw_hands", lambda *args: overlays.append("hand"))
+    monkeypatch.setattr(app.cv2, "imshow", lambda *args: rendered.append(list(overlays)))
+    monkeypatch.setattr(app.cv2, "waitKey", lambda delay: next(keys))
     monkeypatch.setattr(app.cv2, "destroyAllWindows", lambda: calls.append("windows closed"))
     app.main()
     grid = instances[0].kernel.snapshot()
     assert bool(grid.any()) == enabled
     if enabled:
-        assert grid[76, 64] == 1
+        assert grid[76, 64] > 0.9
         assert "hand closed" in calls
     else:
         assert "hand opened" not in calls
     assert "face closed" in calls and "camera released" in calls and "windows closed" in calls
+    expected = [[], ["face"], ["face", "face"]]
+    if enabled:
+        expected[2].append("hand")
+    expected.append(expected[2] + (["hand"] if enabled else []))
+    expected.append(expected[3])
+    assert rendered == expected  # D and K independently show/hide their overlays.

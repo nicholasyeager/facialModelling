@@ -70,7 +70,8 @@ and `num_faces=1` enable tracking and one-face smoothing.
 | + / = and - | Increase/decrease spread speed by 2, within 0–60 |
 | P | Switch serial/OpenMP execution without resetting the effect |
 | O | Toggle overlay visibility; simulation continues |
-| D | Toggle face-outline debug view and hand skeletons when enabled |
+| D | Toggle face-outline debug view |
+| K | Toggle hand/finger skeleton independently (requires `--hand-ignition`) |
 | F | Toggle fullscreen / resizable window |
 | H | Show/hide status, timing and controls panel |
 | Escape | Leave fullscreen; quit when already windowed |
@@ -146,8 +147,10 @@ order. This is region debouncing, not persistent hand identity tracking. Hand or
 face loss, pause, and frame gaps above 0.25 seconds discard pending contacts.
 R clears the effect and contact state; a finger still overlapping can ignite
 again after a fresh dwell. Automatic hand ignition is suspended while paused.
-D shows hand skeletons and yellow fingertip markers alongside the face outline.
-The status panel reports the current detected hand count.
+K independently toggles the hand skeleton: connected finger/palm segments, all
+21 joint landmarks and larger yellow fingertip markers. D toggles only the face
+outline. Both views start hidden and can be combined. The status panel reports
+the current detected hand count and whether the hand skeleton is visible.
 
 This is **2D image overlap, not verified physical touch**. A hand in front of the
 face can trigger ignition without touching it. Hand depth is wrist-relative and

@@ -99,5 +99,7 @@ def draw_hands(frame: np.ndarray, hands: list[np.ndarray]) -> None:
         points = np.rint(np.clip(hand, -4 * max(width, height), 4 * max(width, height))).astype(np.int32)
         for chain in HAND_CHAINS:
             cv2.polylines(frame, [points[list(chain)]], False, (255, 200, 0), 1, cv2.LINE_AA)
+        for point in points:
+            cv2.circle(frame, tuple(point), 2, (255, 200, 0), -1)
         for index in FINGERTIPS:
             cv2.circle(frame, tuple(points[index]), 4, (0, 255, 255), -1)

@@ -61,6 +61,7 @@ def main() -> None:
     mapping = None
     enabled = True
     debug = False
+    hand_debug = False
     hud = True
     viewport = None
     metrics = FrameMetrics()
@@ -116,7 +117,7 @@ def main() -> None:
             if debug and mapping is not None:
                 contours, _ = cv2.findContours(mapping.mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 cv2.drawContours(display, contours, -1, (0, 255, 0), 2)
-            if debug and hand_tracker is not None:
+            if hand_debug and hand_tracker is not None:
                 draw_hands(display, hands)
             status = "Face tracked" if mapping is not None else "No face - overlay hidden"
             state = "paused" if propagation.paused else ("running" if mapping is not None else "waiting")
@@ -124,14 +125,16 @@ def main() -> None:
             if propagation.kernel.parallel:
                 status += f" | threads {propagation.kernel.last_threads}/{propagation.kernel.threads}"
             if hand_tracker is not None:
-                status += f" | hands {len(hands)}"
+                status += f" | hands {len(hands)} | skeleton {'on' if hand_debug else 'off'}"
             execution_help = "P: serial/parallel" if openmp_available else "OpenMP unavailable"
+            hand_help = "K: hand skeleton" if hand_tracker is not None else "Hand skeleton: use --hand-ignition"
             width, height = demo_window.size(frame.shape[1], frame.shape[0])
             canvas, viewport = fit_frame(display, width, height)
             if hud:
                 draw_hud(canvas, metrics.lines() + [status,
                     "Click/I: ignite | Space: pause | R: clear | +/-: speed",
-                    f"{execution_help} | O: overlay | D: contours | F: fullscreen | H: HUD | Q: quit",
+                    f"{execution_help} | O: overlay | D: contours | {hand_help}",
+                    "F: fullscreen | H: HUD | Q: quit",
                     "Esc: leave fullscreen / quit | Timings: rolling completed-frame averages",
                 ])
             rendering_end = time.perf_counter()
@@ -171,6 +174,8 @@ def main() -> None:
                 propagation.adjust_speed(-2.0)
             elif key == ord("d"):
                 debug = not debug
+            elif key == ord("k") and hand_tracker is not None:
+                hand_debug = not hand_debug
             elif key == ord("p") and openmp_available:
                 propagation.toggle_execution()
     except (FileNotFoundError, RuntimeError, ValueError, cv2.error) as exc:
