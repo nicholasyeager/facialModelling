@@ -71,7 +71,10 @@ and `num_faces=1` enable tracking and one-face smoothing.
 | P | Switch serial/OpenMP execution without resetting the effect |
 | O | Toggle overlay visibility; simulation continues |
 | D | Toggle face-outline debug view |
-| Q / Escape / close window | Quit and release camera |
+| F | Toggle fullscreen / resizable window |
+| H | Show/hide status, timing and controls panel |
+| Escape | Leave fullscreen; quit when already windowed |
+| Q / close window | Quit and release camera |
 
 ```powershell
 .\.venv\Scripts\python.exe -m facial_fire.app --camera 0 --grid-size 128 --width 960 --height 720
@@ -80,6 +83,17 @@ and `num_faces=1` enable tracking and one-face smoothing.
 The preview is mirrored; use `--no-mirror` to disable this. Capture dimensions
 are requests and may differ on your hardware. If capture fails, try `--camera 1`,
 close other camera apps and check Windows camera permissions for desktop apps.
+
+The window is resizable. Press F to fill the screen, or launch with `--fullscreen`.
+Camera resolution and display size are independent: `--width` / `--height` request
+capture dimensions and set the initial window size, while fullscreen enlarges
+the presentation without increasing tracking resolution. The image is letterboxed
+to preserve face proportions. Clicks map back through that viewport; clicks in
+the black bars are ignored. H hides the panel for an unobstructed view.
+
+Fullscreen and geometry queries use [OpenCV HighGUI](https://docs.opencv.org/4.x/d7/dfc/group__highgui.html)
+and depend on the desktop backend. The Windows backend is the primary target;
+some backends such as Wayland do not expose the same window-property support.
 
 Start with an empty effect, then click or press I. For example:
 
@@ -133,6 +147,8 @@ texture and clips alpha after interpolation to prevent background leakage.
 `cpp/simulation.cpp` owns the shared cell rule, serial/OpenMP loops, ignition and buffers;
 `cpp/bindings.cpp` exposes it through pybind11. `simulation.py` owns the fixed-step
 clock, pause and loss policy. `app.py` owns capture, UI, cleanup and controls.
+`display.py` handles fullscreen, aspect-preserving presentation, inverse click
+coordinates and the status panel. `metrics.py` aggregates completed-frame timings.
 Tests use synthetic landmarks;
 they require neither the model nor a webcam. `scripts/download_model.py` is the
 only model download step.
@@ -197,6 +213,31 @@ recorded in `Propagation.dropped_seconds`, rather than building a backlog. The
 first frame after pause/loss establishes a fresh clock baseline. Identical seeds,
 parameters and tick counts give repeatable results on the same build; bitwise
 identity across different compilers/hardware is not promised.
+
+## Live performance display
+
+The status panel shows FPS, processing time and tracking/mapping/simulation/
+rendering times in milliseconds. Values are arithmetic means over the last
+30 completed frames, displayed on the next frame. FPS is the number of intervals
+divided by elapsed time between `imshow` completions (up to 30 intervals); it
+includes camera waits and UI event processing between frames. It is a loop
+presentation rate, not a measurement of monitor refresh or camera-to-screen latency.
+
+| Metric | Measured work |
+| --- | --- |
+| Tracking | Face tracker call, including RGB conversion/inference |
+| Mapping | Canonical mapping and face-mask construction |
+| Simulation | Fixed-step scheduling and all native ticks executed for this frame |
+| Rendering | Grid snapshot, effect blend, debug outline, resizing/letterboxing, status panel |
+| Processing | From successful capture return through `imshow` completion; includes mirroring and display submission |
+
+Processing excludes `camera.read()` waits, `waitKey()` event processing and
+key/mouse controls. It exceeds the sum of component times because it also
+includes mirroring, submission and small orchestration costs. Simulation time
+can vary as a frame executes zero, one or multiple fixed ticks; an average is
+not a per-tick kernel benchmark. Pausing still tracks and renders the face.
+Fullscreen can increase rendering cost while keeping the same simulation grid.
+No live timings or camera frames are saved automatically.
 
 ## Simulation benchmarks
 
@@ -270,11 +311,21 @@ individual ticks, reset, fixed-step scheduling and timeout clearing. Parallel
 checks skip on serial-only builds; rejection of unavailable parallel execution
 is tested there instead.
 
+Display tests cover portrait/landscape letterboxing, inverse click coordinates,
+ignition after scaling, text wrapping and rolling timing/FPS calculations.
+
 For a manual check, ignite the face, press Space, then P: the frozen pattern
 should remain unchanged. Resume and confirm spreading continues. Try both spread
 modes, change `--threads` between launches, and check that reset and short/long
 tracking loss still behave as described. Automated tests do not verify webcam
 appearance, frame latency or tracker quality.
+
+Resize the window and press F several times; confirm the face stays proportionate
+and clicks ignite at the pointer position. Check that black-bar clicks do nothing,
+H hides/shows the panel, Escape exits fullscreen before quitting, and Q always
+releases the camera. Watch component timings while changing execution mode,
+pausing and losing/reacquiring tracking. These measurements do not imply a
+performance improvement without a comparison under matching conditions.
 
 Target one face with moderate movement and good lighting. The affine mapping
 does not model depth, strong yaw/pitch or facial expression deformation. The oval

@@ -7,6 +7,8 @@ import time
 import cv2
 
 from .mapping import FaceMapping
+from .display import DemoWindow, draw_hud, fit_frame
+from .metrics import FrameMetrics, FrameTiming
 from .rendering import blend_effect
 from .simulation import Propagation, openmp_available
 from .tracking import FaceTracker
@@ -29,6 +31,7 @@ def main() -> None:
     parser.add_argument("--execution", choices=("serial", "parallel"), default="serial")
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--no-mirror", action="store_true")
+    parser.add_argument("--fullscreen", action="store_true")
     args = parser.parse_args()
     if min(args.width, args.height) < 1 or args.grid_size < 2:
         parser.error("Capture dimensions must be positive and grid size >= 2")
@@ -52,9 +55,18 @@ def main() -> None:
     mapping = None
     enabled = True
     debug = False
+    hud = True
+    viewport = None
+    metrics = FrameMetrics()
 
     def on_mouse(event, x, y, flags, userdata):
         if event == cv2.EVENT_LBUTTONDOWN and mapping is not None:
+            # HighGUI already maps window mouse coordinates to the displayed
+            # canvas. Undo only our letterboxing, not the window scale again.
+            point = None if viewport is None else viewport.frame_point(x, y)
+            if point is None:
+                return
+            x, y = point
             if 0 <= y < mapping.mask.shape[0] and 0 <= x < mapping.mask.shape[1]:
                 if mapping.mask[y, x]:
                     uv = mapping.canonical_point(x, y)
@@ -68,17 +80,22 @@ def main() -> None:
             raise RuntimeError(f"Cannot open camera {args.camera}; check Windows camera permissions.")
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
-        cv2.namedWindow(window, cv2.WINDOW_AUTOSIZE)
+        demo_window = DemoWindow(window, args.width, args.height, args.fullscreen)
         cv2.setMouseCallback(window, on_mouse)
         while True:
             ok, frame = camera.read()
             if not ok:
                 raise RuntimeError("Webcam frame capture failed; camera may be disconnected.")
+            processing_start = time.perf_counter()
             if not args.no_mirror:
                 frame = cv2.flip(frame, 1)
-            points = tracker.detect(frame, time.perf_counter_ns() // 1_000_000)
+            tracking_start = time.perf_counter()
+            points = tracker.detect(frame, int(tracking_start * 1000))
+            tracking_end = time.perf_counter()
             mapping = None if points is None else FaceMapping.from_landmarks(points, frame.shape)
+            mapping_end = time.perf_counter()
             propagation.advance(time.perf_counter(), tracked=mapping is not None)
+            simulation_end = time.perf_counter()
             display = (
                 blend_effect(frame, propagation.kernel.snapshot(), mapping)
                 if mapping is not None and enabled else frame.copy()
@@ -91,15 +108,38 @@ def main() -> None:
             status += f" | {propagation.execution} {args.spread_mode} {state} | speed {propagation.spread_speed:.1f}"
             if propagation.kernel.parallel:
                 status += f" | threads {propagation.kernel.last_threads}/{propagation.kernel.threads}"
-            cv2.putText(display, status, (12, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
-            cv2.putText(display, "Click/I: ignite | Space: pause | R: clear | +/-: speed", (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
             execution_help = "P: serial/parallel" if openmp_available else "OpenMP unavailable"
-            cv2.putText(display, f"{execution_help} | O: overlay | D: contours | Q/Esc: quit", (12, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
-            cv2.imshow(window, display)
+            width, height = demo_window.size(frame.shape[1], frame.shape[0])
+            canvas, viewport = fit_frame(display, width, height)
+            if hud:
+                draw_hud(canvas, metrics.lines() + [status,
+                    "Click/I: ignite | Space: pause | R: clear | +/-: speed",
+                    f"{execution_help} | O: overlay | D: contours | F: fullscreen | H: HUD | Q: quit",
+                    "Esc: leave fullscreen / quit | Timings: rolling completed-frame averages",
+                ])
+            rendering_end = time.perf_counter()
+            cv2.imshow(window, canvas)
+            presented_at = time.perf_counter()
+            metrics.record(FrameTiming(
+                tracking_ms=(tracking_end - tracking_start) * 1000,
+                mapping_ms=(mapping_end - tracking_end) * 1000,
+                simulation_ms=(simulation_end - mapping_end) * 1000,
+                rendering_ms=(rendering_end - simulation_end) * 1000,
+                total_ms=(presented_at - processing_start) * 1000,
+            ), presented_at)
             key = cv2.waitKey(1) & 0xFF
-            if key in (27, ord("q")) or cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) < 1:
+            if key == ord("q") or not demo_window.is_open():
                 break
-            if key == ord("o"):
+            if key == 27:
+                if demo_window.fullscreen:
+                    demo_window.toggle_fullscreen()
+                else:
+                    break
+            elif key == ord("f"):
+                demo_window.toggle_fullscreen()
+            elif key == ord("h"):
+                hud = not hud
+            elif key == ord("o"):
                 enabled = not enabled
             elif key == ord("r"):
                 propagation.reset()
@@ -115,7 +155,7 @@ def main() -> None:
                 debug = not debug
             elif key == ord("p") and openmp_available:
                 propagation.toggle_execution()
-    except (FileNotFoundError, RuntimeError, ValueError) as exc:
+    except (FileNotFoundError, RuntimeError, ValueError, cv2.error) as exc:
         parser.exit(1, f"Error: {exc}\n")
     finally:
         if camera is not None:
