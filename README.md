@@ -289,6 +289,16 @@ simulation processing time, not webcam FPS or end-to-end application latency.
 
 ## Verification and limitations
 
+The [CI workflow](https://github.com/nicholasyeager/facialModelling/actions/workflows/ci.yml)
+runs on pull requests targeting `main`, pushes to `main` (including merges), and
+manual dispatch. It builds the native extension on Windows Server 2022 with
+MSVC and Python 3.11, requires OpenMP support, and runs the headless test suite.
+The OpenMP check fails the job if parallel support is absent, preventing parallel
+correctness tests from silently skipping. The serial-only rejection test is
+expected to skip in this OpenMP build. CI needs neither a webcam nor the model
+bundle and does not assess live appearance or hardware performance. Merge
+blocking requires a separate GitHub branch rule that makes the CI check required.
+
 Run `.\.venv\Scripts\python.exe -m pytest`.
 Tests cover anchor correspondence, inverse mapping, motion/rotation/scale,
 invalid geometry, off-frame clipping, zero intensity, unchanged input and exact
