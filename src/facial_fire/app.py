@@ -11,12 +11,16 @@ from .display import DemoWindow, draw_hud, fit_frame
 from .metrics import FrameMetrics, FrameTiming
 from .rendering import blend_effect
 from .simulation import Propagation, openmp_available
-from .tracking import FaceTracker
+from .tracking import FaceTracker, HandTracker
+from .interaction import FingertipIgnition, draw_hands
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, default=Path("models/face_landmarker.task"))
+    parser.add_argument("--hand-ignition", action="store_true", help="Enable debounced fingertip/face overlap ignition")
+    parser.add_argument("--hand-model", type=Path, default=Path("models/hand_landmarker.task"))
+    parser.add_argument("--hand-dwell", type=float, default=0.12, help="Overlap dwell in seconds, 0-2 (default: 0.12)")
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--width", type=int, default=960)
     parser.add_argument("--height", type=int, default=720)
@@ -37,10 +41,12 @@ def main() -> None:
         parser.error("Capture dimensions must be positive and grid size >= 2")
 
     tracker = None
+    hand_tracker = None
     camera = None
     if not 1 <= args.simulation_hz <= 240:
         parser.error("Simulation frequency must be in [1, 240] Hz")
     try:
+        interaction = FingertipIgnition(dwell=args.hand_dwell)
         propagation = Propagation(
             size=args.grid_size, spread_speed=args.spread_speed, cooling=args.cooling,
             timestep=1 / args.simulation_hz, loss_timeout=args.loss_timeout,
@@ -75,6 +81,8 @@ def main() -> None:
 
     try:
         tracker = FaceTracker(args.model)
+        if args.hand_ignition:
+            hand_tracker = HandTracker(args.hand_model)
         camera = cv2.VideoCapture(args.camera)
         if not camera.isOpened():
             raise RuntimeError(f"Cannot open camera {args.camera}; check Windows camera permissions.")
@@ -91,10 +99,15 @@ def main() -> None:
                 frame = cv2.flip(frame, 1)
             tracking_start = time.perf_counter()
             points = tracker.detect(frame, int(tracking_start * 1000))
+            hands = [] if hand_tracker is None else hand_tracker.detect(frame, int(tracking_start * 1000))
             tracking_end = time.perf_counter()
             mapping = None if points is None else FaceMapping.from_landmarks(points, frame.shape)
+            ignition_points = interaction.update(hands, mapping, time.perf_counter(), paused=propagation.paused)
             mapping_end = time.perf_counter()
             propagation.advance(time.perf_counter(), tracked=mapping is not None)
+            # Apply after advance so a tracking-loss timeout cannot clear a new seed.
+            for uv in ignition_points:
+                propagation.ignite(*uv)
             simulation_end = time.perf_counter()
             display = (
                 blend_effect(frame, propagation.kernel.snapshot(), mapping)
@@ -103,11 +116,15 @@ def main() -> None:
             if debug and mapping is not None:
                 contours, _ = cv2.findContours(mapping.mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 cv2.drawContours(display, contours, -1, (0, 255, 0), 2)
+            if debug and hand_tracker is not None:
+                draw_hands(display, hands)
             status = "Face tracked" if mapping is not None else "No face - overlay hidden"
             state = "paused" if propagation.paused else ("running" if mapping is not None else "waiting")
             status += f" | {propagation.execution} {args.spread_mode} {state} | speed {propagation.spread_speed:.1f}"
             if propagation.kernel.parallel:
                 status += f" | threads {propagation.kernel.last_threads}/{propagation.kernel.threads}"
+            if hand_tracker is not None:
+                status += f" | hands {len(hands)}"
             execution_help = "P: serial/parallel" if openmp_available else "OpenMP unavailable"
             width, height = demo_window.size(frame.shape[1], frame.shape[0])
             canvas, viewport = fit_frame(display, width, height)
@@ -143,6 +160,7 @@ def main() -> None:
                 enabled = not enabled
             elif key == ord("r"):
                 propagation.reset()
+                interaction.reset()
             elif key == ord(" "):
                 propagation.toggle_pause()
             elif key == ord("i") and mapping is not None:
@@ -162,6 +180,8 @@ def main() -> None:
             camera.release()
         if tracker is not None:
             tracker.close()
+        if hand_tracker is not None:
+            hand_tracker.close()
         cv2.destroyAllWindows()
 
 

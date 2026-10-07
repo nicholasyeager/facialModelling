@@ -70,7 +70,7 @@ and `num_faces=1` enable tracking and one-face smoothing.
 | + / = and - | Increase/decrease spread speed by 2, within 0–60 |
 | P | Switch serial/OpenMP execution without resetting the effect |
 | O | Toggle overlay visibility; simulation continues |
-| D | Toggle face-outline debug view |
+| D | Toggle face-outline debug view and hand skeletons when enabled |
 | F | Toggle fullscreen / resizable window |
 | H | Show/hide status, timing and controls panel |
 | Escape | Leave fullscreen; quit when already windowed |
@@ -115,6 +115,56 @@ smooth` to compare with the original uniform four-neighbor spread. Both modes
 support serial and OpenMP execution and use the same fixed simulation clock and
 tracking-loss policy.
 
+## Optional fingertip ignition
+
+Enable local tracking of up to two hands with the pretrained
+[MediaPipe Hand Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/python).
+It uses the existing MediaPipe dependency and a separate version-1 model bundle.
+Download that model explicitly, then enable the feature:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/download_model.py --kind hand
+.\.venv\Scripts\python.exe -m facial_fire.app --hand-ignition --execution parallel --threads 4
+```
+
+Use `--hand-model path/to/hand_landmarker.task` for an existing model. Without
+`--hand-ignition`, the app neither loads the hand model nor runs hand inference.
+The downloader's default remains the face model; `--output` works for either kind.
+
+Hold a thumb or fingertip over the face in the preview for 0.12 seconds to ignite
+at that point. All five fingertips are eligible. Points must be on-frame, inside
+the face oval and inside the canonical simulation square. The inverse face map
+places the ignition in the same UV coordinates used by mouse clicks; the seed
+uses `--ignition-radius`. Face and hand inference process the same frame after
+optional mirroring, so fullscreen/letterboxing does not affect gesture coordinates.
+
+`--hand-dwell` sets the dwell time in seconds (0-2). Nearby tips within 0.04
+canonical units count as one overlap region. A stationary region fires once;
+moving farther than that radius starts a fresh dwell and can create more seeds.
+Contacts are associated by spatial proximity rather than hand labels or list
+order. This is region debouncing, not persistent hand identity tracking. Hand or
+face loss, pause, and frame gaps above 0.25 seconds discard pending contacts.
+R clears the effect and contact state; a finger still overlapping can ignite
+again after a fresh dwell. Automatic hand ignition is suspended while paused.
+D shows hand skeletons and yellow fingertip markers alongside the face outline.
+The status panel reports the current detected hand count.
+
+This is **2D image overlap, not verified physical touch**. A hand in front of the
+face can trigger ignition without touching it. Hand depth is wrist-relative and
+its world coordinates are hand-centered, so they are not directly comparable
+with the face model's coordinates. The dwell filter rejects brief overlaps but
+cannot resolve depth ambiguity. Occlusion can disrupt either tracker; the face
+oval is not a skin/hand segmentation mask, so the color effect can cover an
+occluding finger. No body pose tracking or gesture classifier is implemented in
+this checkpoint. Live touch reliability still requires webcam evaluation.
+
+Hand inference adds work to the Tracking metric, including its RGB conversion.
+Mapping includes fingertip filtering and dwell bookkeeping; Simulation includes
+applying gesture seeds. Rendering includes hand debug graphics when enabled.
+These totals remain rolling processing measurements; the existing simulation-only
+benchmark results do not measure this additional ML workload. All inference stays
+local, and webcam footage is not saved.
+
 ## Execution modes
 
 Serial execution is the default. Start with `--execution parallel --threads 4`
@@ -149,6 +199,8 @@ texture and clips alpha after interpolation to prevent background leakage.
 clock, pause and loss policy. `app.py` owns capture, UI, cleanup and controls.
 `display.py` handles fullscreen, aspect-preserving presentation, inverse click
 coordinates and the status panel. `metrics.py` aggregates completed-frame timings.
+`tracking.py` also wraps optional hand inference; `interaction.py` filters
+fingertips against the face mask and debounces canonical ignition regions.
 Tests use synthetic landmarks;
 they require neither the model nor a webcam. `scripts/download_model.py` is the
 only model download step.
@@ -323,6 +375,10 @@ is tested there instead.
 
 Display tests cover portrait/landscape letterboxing, inverse click coordinates,
 ignition after scaling, text wrapping and rolling timing/FPS calculations.
+Hand interaction tests cover localized UV ignition, dwell/release, spatial jitter,
+multiple regions, hand-order changes, motion mapping, invalid/outside landmarks,
+loss/pause/stall/reset handling, and mocked hand-tracker timestamp/conversion/cleanup.
+They require neither a hand model nor a webcam and do not establish touch accuracy.
 
 For a manual check, ignite the face, press Space, then P: the frozen pattern
 should remain unchanged. Resume and confirm spreading continues. Try both spread
