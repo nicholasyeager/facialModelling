@@ -9,7 +9,8 @@ import cv2
 from .mapping import FaceMapping
 from .display import DemoWindow, draw_hud, fit_frame
 from .metrics import FrameMetrics, FrameTiming
-from .rendering import blend_effect
+from .rendering import blend_effect, EFFECT_COLORS
+from .gestures import SnapDetector
 from .simulation import Propagation, openmp_available
 from .tracking import FaceTracker, HandTracker
 from .interaction import FingertipIgnition, draw_hands
@@ -19,6 +20,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, default=Path("models/face_landmarker.task"))
     parser.add_argument("--hand-ignition", action="store_true", help="Enable debounced fingertip/face overlap ignition")
+    parser.add_argument("--snap-colors", action="store_true", help="Cycle effect colors on a visual thumb/middle snap")
+    parser.add_argument("--snap-close", type=float, default=0.25, help="Pinch distance in palm-size units")
+    parser.add_argument("--snap-release", type=float, default=0.65, help="Release distance in palm-size units")
+    parser.add_argument("--snap-speed", type=float, default=3.0, help="Minimum release speed in palm-size units/second")
     parser.add_argument("--hand-model", type=Path, default=Path("models/hand_landmarker.task"))
     parser.add_argument("--hand-dwell", type=float, default=0.12, help="Overlap dwell in seconds, 0-2 (default: 0.12)")
     parser.add_argument("--camera", type=int, default=0)
@@ -47,6 +52,7 @@ def main() -> None:
         parser.error("Simulation frequency must be in [1, 240] Hz")
     try:
         interaction = FingertipIgnition(dwell=args.hand_dwell)
+        snaps = SnapDetector(close=args.snap_close, release=args.snap_release, min_speed=args.snap_speed)
         propagation = Propagation(
             size=args.grid_size, spread_speed=args.spread_speed, cooling=args.cooling,
             timestep=1 / args.simulation_hz, loss_timeout=args.loss_timeout,
@@ -65,6 +71,7 @@ def main() -> None:
     hud = True
     viewport = None
     metrics = FrameMetrics()
+    color_index = 0
 
     def on_mouse(event, x, y, flags, userdata):
         if event == cv2.EVENT_LBUTTONDOWN and mapping is not None:
@@ -82,7 +89,7 @@ def main() -> None:
 
     try:
         tracker = FaceTracker(args.model)
-        if args.hand_ignition:
+        if args.hand_ignition or args.snap_colors:
             hand_tracker = HandTracker(args.hand_model)
         camera = cv2.VideoCapture(args.camera)
         if not camera.isOpened():
@@ -103,7 +110,12 @@ def main() -> None:
             hands = [] if hand_tracker is None else hand_tracker.detect(frame, int(tracking_start * 1000))
             tracking_end = time.perf_counter()
             mapping = None if points is None else FaceMapping.from_landmarks(points, frame.shape)
-            ignition_points = interaction.update(hands, mapping, time.perf_counter(), paused=propagation.paused)
+            gesture_time = tracking_start  # Acquisition-side time, before inference work.
+            ignition_points = interaction.update(hands if args.hand_ignition else [], mapping, gesture_time, paused=propagation.paused)
+            if args.snap_colors:
+                # Simultaneous snaps produce one visible color transition.
+                if snaps.update(hands, gesture_time):
+                    color_index = (color_index + 1) % len(EFFECT_COLORS)
             mapping_end = time.perf_counter()
             propagation.advance(time.perf_counter(), tracked=mapping is not None)
             # Apply after advance so a tracking-loss timeout cannot clear a new seed.
@@ -111,7 +123,7 @@ def main() -> None:
                 propagation.ignite(*uv)
             simulation_end = time.perf_counter()
             display = (
-                blend_effect(frame, propagation.kernel.snapshot(), mapping)
+                blend_effect(frame, propagation.kernel.snapshot(), mapping, tint_bgr=EFFECT_COLORS[color_index][1])
                 if mapping is not None and enabled else frame.copy()
             )
             if debug and mapping is not None:
@@ -126,8 +138,10 @@ def main() -> None:
                 status += f" | threads {propagation.kernel.last_threads}/{propagation.kernel.threads}"
             if hand_tracker is not None:
                 status += f" | hands {len(hands)} | skeleton {'on' if hand_debug else 'off'}"
+            if args.snap_colors:
+                status += f" | color {EFFECT_COLORS[color_index][0]}"
             execution_help = "P: serial/parallel" if openmp_available else "OpenMP unavailable"
-            hand_help = "K: hand skeleton" if hand_tracker is not None else "Hand skeleton: use --hand-ignition"
+            hand_help = "K: hand skeleton" if hand_tracker is not None else "Hand skeleton: use --hand-ignition or --snap-colors"
             width, height = demo_window.size(frame.shape[1], frame.shape[0])
             canvas, viewport = fit_frame(display, width, height)
             if hud:
@@ -136,7 +150,7 @@ def main() -> None:
                     f"{execution_help} | O: overlay | D: contours | {hand_help}",
                     "F: fullscreen | H: HUD | Q: quit",
                     "Esc: leave fullscreen / quit | Timings: rolling completed-frame averages",
-                ])
+                ] + (snaps.lines if hand_debug and args.snap_colors else []))
             rendering_end = time.perf_counter()
             cv2.imshow(window, canvas)
             presented_at = time.perf_counter()
@@ -164,6 +178,7 @@ def main() -> None:
             elif key == ord("r"):
                 propagation.reset()
                 interaction.reset()
+                snaps.reset()
             elif key == ord(" "):
                 propagation.toggle_pause()
             elif key == ord("i") and mapping is not None:

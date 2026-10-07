@@ -135,13 +135,14 @@ def test_hand_tracker_pixel_conversion_timestamps_and_cleanup(monkeypatch):
         HandTracker(Path("missing.task"))
 
 
-@pytest.mark.parametrize("enabled", [False, True])
-def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled):
+@pytest.mark.parametrize("enabled,snap_enabled", [(False, False), (True, False), (False, True)])
+def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled, snap_enabled):
     from facial_fire import app
     import sys
 
     calls = []
     instances = []
+    frame_number = 0
     frame = np.zeros((160, 160, 3), np.uint8)
     frame[:, 0] = 99
 
@@ -162,6 +163,12 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled):
 
         def detect(self, image, timestamp):
             assert (image[:, -1] == 99).all()
+            if snap_enabled:
+                hand = np.zeros((21, 2), dtype=float)
+                hand[0], hand[5], hand[9], hand[17] = (80, 140), (40, 60), (80, 60), (120, 60)
+                hand[4] = (80, 30)
+                hand[12] = (88 if frame_number <= 2 else 152, 30)
+                return [hand]
             return [hand_at((70, 80))]
 
         def close(self):
@@ -175,6 +182,8 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled):
             pass
 
         def read(self):
+            nonlocal frame_number
+            frame_number += 1
             return True, frame.copy()
 
         def release(self):
@@ -195,7 +204,10 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled):
             super().__init__(**kwargs)
             instances.append(self)
 
-    monkeypatch.setattr(sys, "argv", ["facial-fire", "--hand-dwell", "0"] + (["--hand-ignition"] if enabled else []))
+    monkeypatch.setattr(sys, "argv", ["facial-fire", "--hand-dwell", "0"]
+                        + (["--hand-ignition"] if enabled else [])
+                        + (["--snap-colors"] if snap_enabled else []))
+    monkeypatch.setattr(app, "time", SimpleNamespace(perf_counter=lambda: frame_number * .06))
     monkeypatch.setattr(app, "FaceTracker", FakeFace)
     monkeypatch.setattr(app, "HandTracker", FakeHand)
     monkeypatch.setattr(app, "Propagation", ObservedPropagation)
@@ -212,18 +224,27 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled):
     monkeypatch.setattr(app.cv2, "imshow", lambda *args: rendered.append(list(overlays)))
     monkeypatch.setattr(app.cv2, "waitKey", lambda delay: next(keys))
     monkeypatch.setattr(app.cv2, "destroyAllWindows", lambda: calls.append("windows closed"))
+    tints = []
+    real_blend = app.blend_effect
+    def record_blend(*args, **kwargs):
+        tints.append(kwargs["tint_bgr"])
+        return real_blend(*args, **kwargs)
+    monkeypatch.setattr(app, "blend_effect", record_blend)
     app.main()
     grid = instances[0].kernel.snapshot()
     assert bool(grid.any()) == enabled
     if enabled:
         assert grid[76, 64] > 0.9
         assert "hand closed" in calls
-    else:
+    elif not snap_enabled:
         assert "hand opened" not in calls
+    if snap_enabled:
+        assert "hand opened" in calls and "hand closed" in calls
+        assert tints == [app.EFFECT_COLORS[0][1]] * 2 + [app.EFFECT_COLORS[1][1]] * 3
     assert "face closed" in calls and "camera released" in calls and "windows closed" in calls
     expected = [[], ["face"], ["face", "face"]]
-    if enabled:
+    if enabled or snap_enabled:
         expected[2].append("hand")
-    expected.append(expected[2] + (["hand"] if enabled else []))
+    expected.append(expected[2] + (["hand"] if enabled or snap_enabled else []))
     expected.append(expected[3])
     assert rendered == expected  # D and K independently show/hide their overlays.

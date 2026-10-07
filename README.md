@@ -71,7 +71,7 @@ and `num_faces=1` enable tracking and one-face smoothing.
 | P | Switch serial/OpenMP execution without resetting the effect |
 | O | Toggle overlay visibility; simulation continues |
 | D | Toggle face-outline debug view |
-| K | Toggle hand/finger skeleton independently (requires `--hand-ignition`) |
+| K | Toggle hand/finger skeleton independently (requires `--hand-ignition` or `--snap-colors`) |
 | F | Toggle fullscreen / resizable window |
 | H | Show/hide status, timing and controls panel |
 | Escape | Leave fullscreen; quit when already windowed |
@@ -129,7 +129,7 @@ Download that model explicitly, then enable the feature:
 ```
 
 Use `--hand-model path/to/hand_landmarker.task` for an existing model. Without
-`--hand-ignition`, the app neither loads the hand model nor runs hand inference.
+`--hand-ignition` or `--snap-colors`, the app neither loads the hand model nor runs hand inference.
 The downloader's default remains the face model; `--output` works for either kind.
 
 Hold a thumb or fingertip over the face in the preview for 0.12 seconds to ignite
@@ -158,8 +158,8 @@ its world coordinates are hand-centered, so they are not directly comparable
 with the face model's coordinates. The dwell filter rejects brief overlaps but
 cannot resolve depth ambiguity. Occlusion can disrupt either tracker; the face
 oval is not a skin/hand segmentation mask, so the color effect can cover an
-occluding finger. No body pose tracking or gesture classifier is implemented in
-this checkpoint. Live touch reliability still requires webcam evaluation.
+occluding finger. No body pose tracking is implemented. Live touch reliability
+still requires webcam evaluation.
 
 Hand inference adds work to the Tracking metric, including its RGB conversion.
 Mapping includes fingertip filtering and dwell bookkeeping; Simulation includes
@@ -167,6 +167,56 @@ applying gesture seeds. Rendering includes hand debug graphics when enabled.
 These totals remain rolling processing measurements; the existing simulation-only
 benchmark results do not measure this additional ML workload. All inference stays
 local, and webcam footage is not saved.
+
+## Optional snap color changes
+
+Use `--snap-colors` to cycle orange, blue, violet and green when either hand
+performs a visually detected thumb/middle-finger snap. It uses the same hand
+model; no extra ML dependency, gesture model, microphone or custom training is
+required. The built-in [MediaPipe gesture classifier](https://developers.google.com/edge/mediapipe/solutions/vision/gesture_recognizer)
+does not include snapping. This project adds a temporal landmark heuristic:
+
+```powershell
+.\.venv\Scripts\python.exe -m facial_fire.app --snap-colors --hand-ignition --execution parallel --threads 4
+```
+
+`--snap-colors` also works independently of `--hand-ignition`. Download the hand
+model as above if missing. Touch ignition and snap detection share one hand
+inference per frame. The original orange tint remains the startup default.
+Color changes affect rendering only; they preserve intensity, simulation ticks,
+seed, speed and pause state. Snaps work while the simulation is paused or no face
+is visible, so the selected color appears when the overlay returns. Simultaneous
+snaps change color once per frame. R clears pending snap history but retains color.
+
+The detector measures thumb-tip (4) to middle-tip (12) image distance divided by
+the mean of wrist-to-middle-knuckle and index-to-pinky-knuckle distances. Defaults:
+
+| Parameter | Default | Meaning |
+| --- | ---: | --- |
+| `--snap-close` | 0.25 | Maximum pinch distance in palm-size units |
+| `--snap-release` | 0.65 | Minimum released distance in palm-size units |
+| `--snap-speed` | 3.0 | Minimum average separation speed in palm-size units/second |
+
+The tips must remain close for at least 0.04 s, then reach the release distance
+within 0.25 s of the last close observation at sufficient average speed. A
+0.4 s per-hand cooldown suppresses repeats; a fresh pinch is required afterward.
+Distance/speed calculations use frame timestamps before inference work. K shows
+hand skeletons plus per-hand normalized gap, frame-to-frame speed and detector
+state in the status panel (H must be visible). The release decision uses average
+speed since the last close observation, rather than the displayed instantaneous
+speed. Thresholds must be finite, with `0 < close < release <= 4` and
+`0 < speed <= 100`.
+
+Hands are associated by palm-center proximity, not result order. Missing hands,
+frame gaps above 0.2 s, large palm motion/scale changes and close palm crossings
+discard uncertain histories. This association does not guarantee persistent
+identity. Poor landmark estimates or an ambiguous hand replacement can still
+produce false detections. This is a visual quick pinch-release approximation,
+not proof of an audible or physical snap. Slow releases are rejected, but a fast
+intentional pinch release can qualify. Low FPS, blur, occlusion and out-of-plane
+hand rotation can cause misses or false positives; defaults need live evaluation.
+Gesture bookkeeping is included in Mapping timings and tint/debug work in
+Rendering timings. No webcam or gesture samples are saved automatically.
 
 ## Execution modes
 
@@ -204,6 +254,7 @@ clock, pause and loss policy. `app.py` owns capture, UI, cleanup and controls.
 coordinates and the status panel. `metrics.py` aggregates completed-frame timings.
 `tracking.py` also wraps optional hand inference; `interaction.py` filters
 fingertips against the face mask and debounces canonical ignition regions.
+`gestures.py` tracks temporal thumb/middle separation for optional snap events.
 Tests use synthetic landmarks;
 they require neither the model nor a webcam. `scripts/download_model.py` is the
 only model download step.
@@ -382,6 +433,11 @@ Hand interaction tests cover localized UV ignition, dwell/release, spatial jitte
 multiple regions, hand-order changes, motion mapping, invalid/outside landmarks,
 loss/pause/stall/reset handling, and mocked hand-tracker timestamp/conversion/cleanup.
 They require neither a hand model nor a webcam and do not establish touch accuracy.
+Snap tests cover mirrored hands and size normalization, temporal separation,
+slow/brief gesture rejection, cooldown/rearming, multiple hands and order changes,
+loss/stall/motion/crossing resets, and frame-rate variation. Rendering tests verify
+color changes preserve the grid and mask confinement. A synthetic app loop checks
+snap-only tracking, color cycling, and independent debug toggles.
 
 For a manual check, ignite the face, press Space, then P: the frozen pattern
 should remain unchanged. Resume and confirm spreading continues. Try both spread
