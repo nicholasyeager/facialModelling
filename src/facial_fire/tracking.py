@@ -58,12 +58,18 @@ class HandTracker:
         )
         self._tracker = vision.HandLandmarker.create_from_options(options)
         self._timestamp_ms = -1
+        self.handedness: list[str | None] = []
 
     def detect(self, frame: np.ndarray, timestamp_ms: int) -> list[np.ndarray]:
         self._timestamp_ms = max(timestamp_ms, self._timestamp_ms + 1)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
         result = self._tracker.detect_for_video(image, self._timestamp_ms)
+        labels = getattr(result, "handedness", [])
+        self.handedness = [
+            label[0].category_name if label and label[0].score >= 0.7 else None
+            for label in labels
+        ]
         height, width = frame.shape[:2]
         return [np.array([(p.x * width, p.y * height) for p in hand], dtype=np.float32)
                 for hand in result.hand_landmarks]

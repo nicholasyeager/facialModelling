@@ -116,7 +116,8 @@ def test_hand_tracker_pixel_conversion_timestamps_and_cleanup(monkeypatch):
     class FakeTracker:
         def detect_for_video(self, image, timestamp):
             calls.append(timestamp)
-            return SimpleNamespace(hand_landmarks=[[SimpleNamespace(x=0.25, y=0.75)] * 21])
+            return SimpleNamespace(hand_landmarks=[[SimpleNamespace(x=0.25, y=0.75)] * 21],
+                                   handedness=[[SimpleNamespace(category_name="Left", score=.95)]])
 
         def close(self):
             calls.append("closed")
@@ -129,14 +130,16 @@ def test_hand_tracker_pixel_conversion_timestamps_and_cleanup(monkeypatch):
     frame = np.zeros((100, 200, 3), np.uint8)
     for timestamp in (10, 10, 9):
         np.testing.assert_array_equal(tracker.detect(frame, timestamp)[0], np.tile([50, 75], (21, 1)))
+        assert tracker.handedness == ["Left"]
     tracker.close()
     assert calls == [10, 11, 12, "closed"]
     with pytest.raises(FileNotFoundError, match="--kind hand"):
         HandTracker(Path("missing.task"))
 
 
-@pytest.mark.parametrize("enabled,snap_enabled", [(False, False), (True, False), (False, True)])
-def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled, snap_enabled):
+@pytest.mark.parametrize("enabled,snap_enabled,palm_enabled", [(False, False, False), (True, False, False),
+                                                           (False, True, False), (False, False, True)])
+def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled, snap_enabled, palm_enabled):
     from facial_fire import app
     import sys
 
@@ -163,6 +166,14 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled, s
 
         def detect(self, image, timestamp):
             assert (image[:, -1] == 99).all()
+            if palm_enabled:
+                a = np.full((21, 2), 150, dtype=float)
+                a[0], a[5], a[9], a[13], a[17] = (80, 140), (40, 60), (80, 60), (100, 60), (120, 60)
+                b = a + (40 if frame_number == 1 else 140, 0)
+                if frame_number > 1:
+                    a[8] = (70, 80)
+                self.handedness = ["Left", "Right"]
+                return [a, b]
             if snap_enabled:
                 hand = np.zeros((21, 2), dtype=float)
                 hand[0], hand[5], hand[9], hand[17] = (80, 140), (40, 60), (80, 60), (120, 60)
@@ -206,7 +217,8 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled, s
 
     monkeypatch.setattr(sys, "argv", ["facial-fire", "--hand-dwell", "0"]
                         + (["--hand-ignition"] if enabled else [])
-                        + (["--snap-colors"] if snap_enabled else []))
+                        + (["--snap-colors"] if snap_enabled else [])
+                        + (["--palm-transfer", "--palm-dwell", "0"] if palm_enabled else []))
     monkeypatch.setattr(app, "time", SimpleNamespace(perf_counter=lambda: frame_number * .06))
     monkeypatch.setattr(app, "FaceTracker", FakeFace)
     monkeypatch.setattr(app, "HandTracker", FakeHand)
@@ -230,10 +242,12 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled, s
         tints.append(kwargs["tint_bgr"])
         return real_blend(*args, **kwargs)
     monkeypatch.setattr(app, "blend_effect", record_blend)
+    flame_counts = []
+    monkeypatch.setattr(app, "draw_fingertip_fire", lambda image, flames, tint, now: flame_counts.append(len(flames)))
     app.main()
     grid = instances[0].kernel.snapshot()
-    assert bool(grid.any()) == enabled
-    if enabled:
+    assert bool(grid.any()) == (enabled or palm_enabled)
+    if enabled or palm_enabled:
         assert grid[76, 64] > 0.9
         assert "hand closed" in calls
     elif not snap_enabled:
@@ -241,10 +255,12 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled, s
     if snap_enabled:
         assert "hand opened" in calls and "hand closed" in calls
         assert tints == [app.EFFECT_COLORS[0][1]] * 2 + [app.EFFECT_COLORS[1][1]] * 3
+    if palm_enabled:
+        assert flame_counts == [10, 9, 9, 9, 9]
     assert "face closed" in calls and "camera released" in calls and "windows closed" in calls
     expected = [[], ["face"], ["face", "face"]]
-    if enabled or snap_enabled:
+    if enabled or snap_enabled or palm_enabled:
         expected[2].append("hand")
-    expected.append(expected[2] + (["hand"] if enabled or snap_enabled else []))
+    expected.append(expected[2] + (["hand"] if enabled or snap_enabled or palm_enabled else []))
     expected.append(expected[3])
     assert rendered == expected  # D and K independently show/hide their overlays.

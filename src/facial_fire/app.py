@@ -9,7 +9,8 @@ import cv2
 from .mapping import FaceMapping
 from .display import DemoWindow, draw_hud, fit_frame
 from .metrics import FrameMetrics, FrameTiming
-from .rendering import blend_effect, EFFECT_COLORS
+from .rendering import blend_effect, draw_fingertip_fire, EFFECT_COLORS
+from .transfer import PalmTransfer
 from .gestures import SnapDetector
 from .simulation import Propagation, openmp_available
 from .tracking import FaceTracker, HandTracker
@@ -19,7 +20,11 @@ from .interaction import FingertipIgnition, draw_hands
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, default=Path("models/face_landmarker.task"))
-    parser.add_argument("--hand-ignition", action="store_true", help="Enable debounced fingertip/face overlap ignition")
+    hand_mode = parser.add_mutually_exclusive_group()
+    hand_mode.add_argument("--hand-ignition", action="store_true", help="Enable debounced fingertip/face overlap ignition")
+    hand_mode.add_argument("--palm-transfer", action="store_true", help="Connect palms to charge tips, then transfer fire to face")
+    parser.add_argument("--palm-distance", type=float, default=0.75, help="Palm connection distance in palm-size units")
+    parser.add_argument("--palm-dwell", type=float, default=0.18, help="Palm connection dwell in seconds")
     parser.add_argument("--snap-colors", action="store_true", help="Cycle effect colors on a visual thumb/middle snap")
     parser.add_argument("--snap-close", type=float, default=0.25, help="Pinch distance in palm-size units")
     parser.add_argument("--snap-release", type=float, default=0.65, help="Release distance in palm-size units")
@@ -52,6 +57,7 @@ def main() -> None:
         parser.error("Simulation frequency must be in [1, 240] Hz")
     try:
         interaction = FingertipIgnition(dwell=args.hand_dwell)
+        transfer = PalmTransfer(dwell=args.hand_dwell, palm_dwell=args.palm_dwell, palm_distance=args.palm_distance)
         snaps = SnapDetector(close=args.snap_close, release=args.snap_release, min_speed=args.snap_speed)
         propagation = Propagation(
             size=args.grid_size, spread_speed=args.spread_speed, cooling=args.cooling,
@@ -89,7 +95,7 @@ def main() -> None:
 
     try:
         tracker = FaceTracker(args.model)
-        if args.hand_ignition or args.snap_colors:
+        if args.hand_ignition or args.palm_transfer or args.snap_colors:
             hand_tracker = HandTracker(args.hand_model)
         camera = cv2.VideoCapture(args.camera)
         if not camera.isOpened():
@@ -112,6 +118,9 @@ def main() -> None:
             mapping = None if points is None else FaceMapping.from_landmarks(points, frame.shape)
             gesture_time = tracking_start  # Acquisition-side time, before inference work.
             ignition_points = interaction.update(hands if args.hand_ignition else [], mapping, gesture_time, paused=propagation.paused)
+            if args.palm_transfer:
+                ignition_points = transfer.update(hands, mapping, gesture_time, paused=propagation.paused,
+                                                  labels=getattr(hand_tracker, "handedness", ()))
             if args.snap_colors:
                 # Simultaneous snaps produce one visible color transition.
                 if snaps.update(hands, gesture_time):
@@ -126,6 +135,8 @@ def main() -> None:
                 blend_effect(frame, propagation.kernel.snapshot(), mapping, tint_bgr=EFFECT_COLORS[color_index][1])
                 if mapping is not None and enabled else frame.copy()
             )
+            if args.palm_transfer and enabled:
+                draw_fingertip_fire(display, transfer.flames, EFFECT_COLORS[color_index][1], gesture_time)
             if debug and mapping is not None:
                 contours, _ = cv2.findContours(mapping.mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 cv2.drawContours(display, contours, -1, (0, 255, 0), 2)
@@ -140,8 +151,10 @@ def main() -> None:
                 status += f" | hands {len(hands)} | skeleton {'on' if hand_debug else 'off'}"
             if args.snap_colors:
                 status += f" | color {EFFECT_COLORS[color_index][0]}"
+            if args.palm_transfer:
+                status += f" | charged tips {transfer.charged_count}"
             execution_help = "P: serial/parallel" if openmp_available else "OpenMP unavailable"
-            hand_help = "K: hand skeleton" if hand_tracker is not None else "Hand skeleton: use --hand-ignition or --snap-colors"
+            hand_help = "K: hand skeleton" if hand_tracker is not None else "Hand skeleton: enable a hand mode"
             width, height = demo_window.size(frame.shape[1], frame.shape[0])
             canvas, viewport = fit_frame(display, width, height)
             if hud:
@@ -150,7 +163,8 @@ def main() -> None:
                     f"{execution_help} | O: overlay | D: contours | {hand_help}",
                     "F: fullscreen | H: HUD | Q: quit",
                     "Esc: leave fullscreen / quit | Timings: rolling completed-frame averages",
-                ] + (snaps.lines if hand_debug and args.snap_colors else []))
+                ] + (snaps.lines if hand_debug and args.snap_colors else [])
+                  + (transfer.lines if args.palm_transfer else []))
             rendering_end = time.perf_counter()
             cv2.imshow(window, canvas)
             presented_at = time.perf_counter()
@@ -179,6 +193,7 @@ def main() -> None:
                 propagation.reset()
                 interaction.reset()
                 snaps.reset()
+                transfer.reset()
             elif key == ord(" "):
                 propagation.toggle_pause()
             elif key == ord("i") and mapping is not None:
