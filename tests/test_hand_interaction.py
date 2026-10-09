@@ -170,6 +170,8 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled, s
                 a = np.full((21, 2), 150, dtype=float)
                 a[0], a[5], a[9], a[13], a[17] = (80, 140), (40, 60), (80, 60), (100, 60), (120, 60)
                 b = a + (40 if frame_number == 1 else 140, 0)
+                if frame_number == 1:
+                    b[list(FINGERTIPS)] = a[list(FINGERTIPS)] + (8, 0)
                 if frame_number > 1:
                     a[8] = (70, 80)
                 self.handedness = ["Left", "Right"]
@@ -218,7 +220,7 @@ def test_app_optional_hand_ignition_and_resource_cleanup(monkeypatch, enabled, s
     monkeypatch.setattr(sys, "argv", ["facial-fire", "--hand-dwell", "0"]
                         + (["--hand-ignition"] if enabled else [])
                         + (["--snap-colors"] if snap_enabled else [])
-                        + (["--palm-transfer", "--palm-dwell", "0"] if palm_enabled else []))
+                        + (["--fingertip-transfer", "--charge-dwell", "0"] if palm_enabled else []))
     monkeypatch.setattr(app, "time", SimpleNamespace(perf_counter=lambda: frame_number * .06))
     monkeypatch.setattr(app, "FaceTracker", FakeFace)
     monkeypatch.setattr(app, "HandTracker", FakeHand)

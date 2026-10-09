@@ -6,7 +6,7 @@ from facial_fire.interaction import FINGERTIPS
 from facial_fire.mapping import FaceMapping
 from facial_fire.rendering import draw_fingertip_fire
 from facial_fire.simulation import Propagation
-from facial_fire.transfer import PalmTransfer
+from facial_fire.transfer import FingertipTransfer
 
 
 def hand(x=100, y=250, scale=1, mirrored=False):
@@ -25,31 +25,38 @@ def face():
     return FaceMapping(transform, cv2.invertAffineTransform(transform), mask)
 
 
+def connecting_hand():
+    points = hand(140)
+    points[list(FINGERTIPS)] = hand()[list(FINGERTIPS)] + (8, 0)
+    return points
+
+
 def charged(detector=None):
-    detector = detector or PalmTransfer()
+    detector = detector or FingertipTransfer()
     for now in (0, .1, .18):
-        assert detector.update([hand(), hand(140)], None, now, labels=("Left", "Right")) == []
+        assert detector.update([hand(), connecting_hand()], None, now, labels=("Left", "Right")) == []
     assert detector.charged_count == 10
     return detector
 
 
-def test_palm_charge_requires_dwell_and_two_hands():
-    detector = PalmTransfer()
+def test_fingertip_charge_requires_dwell_and_two_hands():
+    detector = FingertipTransfer()
     for now in (0, .1, .2):
         detector.update([hand()], None, now)
         assert detector.charged_count == 0
-    detector.update([hand(), hand(140)], None, .3)
-    detector.update([hand(), hand(140)], None, .4)
+    detector.update([hand(), connecting_hand()], None, .3)
+    detector.update([hand(), connecting_hand()], None, .4)
     assert detector.charged_count == 0
-    detector.update([hand(), hand(140)], None, .48)
+    detector.update([hand(), connecting_hand()], None, .48)
     assert detector.charged_count == 10
 
 
 @pytest.mark.parametrize("mirrored", [False, True])
 @pytest.mark.parametrize("scale", [.5, 1, 2])
-def test_palm_connection_normalized_by_size(mirrored, scale):
-    detector = PalmTransfer()
+def test_fingertip_connection_normalized_by_size(mirrored, scale):
+    detector = FingertipTransfer()
     hands = [hand(100, scale=scale, mirrored=mirrored), hand(100 + 40 * scale, scale=scale, mirrored=mirrored)]
+    hands[1][list(FINGERTIPS)] = hands[0][list(FINGERTIPS)] + (8 * scale, 0)
     for now in (0, .1, .18):
         detector.update(hands, None, now)
     assert detector.charged_count == 10
@@ -76,14 +83,14 @@ def test_single_tip_transfer_consumes_only_that_tip_and_seeds_face():
     assert detector.charged_count == 9
 
 
-def test_reconnecting_palms_recharges_and_connection_blocks_transfers():
-    detector = charged(PalmTransfer(dwell=0))
+def test_reconnecting_fingertips_recharges_and_connection_blocks_transfers():
+    detector = charged(FingertipTransfer(dwell=0))
     a = hand()
     a[8] = (70, 80)
     detector.update([a, hand(220)], face(), .2, labels=("Left", "Right"))
     assert detector.charged_count == 9
     for now in (.25, .35, .43, .5):
-        assert detector.update([a, hand(140)], face(), now, labels=("Left", "Right")) == []
+        assert detector.update([a, connecting_hand()], face(), now, labels=("Left", "Right")) == []
     assert detector.charged_count == 10
     assert len(detector.update([a, hand(220)], face(), .55, labels=("Left", "Right"))) == 1
     assert detector.charged_count == 9
@@ -92,9 +99,9 @@ def test_reconnecting_palms_recharges_and_connection_blocks_transfers():
 def test_only_charged_fingertips_transfer_and_multiple_tips_consume_individually():
     a, b = hand(), hand(220)
     a[4], a[8] = (50, 60), (70, 80)
-    empty = PalmTransfer(dwell=0)
+    empty = FingertipTransfer(dwell=0)
     assert empty.update([a, b], face(), 0) == []
-    detector = charged(PalmTransfer(dwell=0))
+    detector = charged(FingertipTransfer(dwell=0))
     assert len(detector.update([a, b], face(), .2, labels=("Left", "Right"))) == 2
     assert detector.charged_count == 8
 
@@ -132,7 +139,7 @@ def test_uncertain_history_loses_charges(kind):
 
 
 def test_ambiguous_crossing_does_not_assign_consumable_state():
-    detector = PalmTransfer(palm_dwell=0)
+    detector = FingertipTransfer(charge_dwell=0)
     detector.update([hand(), hand()], None, 0)
     assert detector.charged_count == 10
     detector.update([hand(40), hand(160)], None, .1)
@@ -140,7 +147,7 @@ def test_ambiguous_crossing_does_not_assign_consumable_state():
 
 
 def test_invalid_points_outside_mask_and_uv_do_not_consume():
-    detector = charged(PalmTransfer(dwell=0))
+    detector = charged(FingertipTransfer(dwell=0))
     a = hand()
     a[list(FINGERTIPS)] = [(-1, 80), (400, 80), (70, 80), (130, 80), (70, 150)]
     mapping = face()
@@ -153,7 +160,7 @@ def test_invalid_points_outside_mask_and_uv_do_not_consume():
 
 
 def test_invalid_geometry_and_clock():
-    detector = PalmTransfer()
+    detector = FingertipTransfer()
     bad = hand()
     bad[0] = np.nan
     detector.update([bad, np.zeros((20, 2))], None, 1)
@@ -163,10 +170,10 @@ def test_invalid_geometry_and_clock():
             detector.update([], None, now)
 
 
-@pytest.mark.parametrize("kwargs", [{"dwell": -1}, {"palm_dwell": 3}, {"palm_distance": 0}, {"palm_distance": float("nan")}])
+@pytest.mark.parametrize("kwargs", [{"dwell": -1}, {"charge_dwell": 3}, {"tip_distance": 0}, {"tip_distance": float("nan")}])
 def test_invalid_settings(kwargs):
     with pytest.raises(ValueError):
-        PalmTransfer(**kwargs)
+        FingertipTransfer(**kwargs)
 
 
 def test_flame_rendering_clips_edges_and_empty_charges_draw_nothing():
@@ -178,3 +185,60 @@ def test_flame_rendering_clips_edges_and_empty_charges_draw_nothing():
                               (np.array([-1, 20]), 65), (np.array([np.nan, 1]), 65)], (20, 90, 255), 0)
     assert np.any(frame[30:45, 35:45] != before[30:45, 35:45])
     np.testing.assert_array_equal(frame[60:], before[60:])
+
+
+def test_close_palms_with_far_fingertips_do_not_charge():
+    detector = FingertipTransfer(charge_dwell=0)
+    a, b = hand(), hand(105)
+    b[list(FINGERTIPS)] += (100, 0)
+    detector.update([a, b], None, 0)
+    assert detector.charged_count == 0
+
+
+def test_separated_palms_with_corresponding_fingertips_close_charge():
+    detector = FingertipTransfer(charge_dwell=0)
+    a, b = hand(), hand(260)
+    b[list(FINGERTIPS)] = a[list(FINGERTIPS)] + (8, 0)
+    detector.update([a, b], None, 0)
+    assert detector.charged_count == 10
+    assert "T 0.12" in detector.lines[1]
+
+
+@pytest.mark.parametrize("required", [1, 2, 3, 4, 5])
+def test_configurable_corresponding_pair_count(required):
+    detector = FingertipTransfer(charge_dwell=0, min_pairs=required)
+    a, b = hand(), hand(220)
+    for tip in FINGERTIPS[:required - 1]:
+        b[tip] = a[tip] + (8, 0)
+    detector.update([a, b], None, 0)
+    assert detector.charged_count == 0
+    b[FINGERTIPS[required - 1]] = a[FINGERTIPS[required - 1]] + (8, 0)
+    detector.update([a, b], None, .1)
+    assert detector.charged_count == 10
+
+
+def test_noncorresponding_tips_do_not_count_as_contact():
+    detector = FingertipTransfer(charge_dwell=0)
+    a, b = hand(), hand(220)
+    a[list(FINGERTIPS)] = [(0, 150), (100, 150), (200, 150), (300, 150), (400, 150)]
+    b[list(FINGERTIPS)] = np.roll(a[list(FINGERTIPS)], 1, axis=0)
+    detector.update([a, b], None, 0)
+    assert detector.charged_count == 0
+
+
+def test_fingertip_connection_release_hysteresis():
+    detector = charged()
+    a, b = hand(), connecting_hand()
+    # Entry distance .35; .4 still holds an established connection.
+    b[list(FINGERTIPS)] = a[list(FINGERTIPS)] + (26, 0)
+    detector.update([a, b], None, .2, labels=("Left", "Right"))
+    assert "separate to transfer" in detector.lines[0]
+    b[list(FINGERTIPS)] = a[list(FINGERTIPS)] + (40, 0)
+    detector.update([a, b], None, .3, labels=("Left", "Right"))
+    assert "separate to transfer" not in detector.lines[0]
+
+
+@pytest.mark.parametrize("pairs", [0, 6, 2.5, True])
+def test_invalid_pair_count(pairs):
+    with pytest.raises(ValueError):
+        FingertipTransfer(min_pairs=pairs)

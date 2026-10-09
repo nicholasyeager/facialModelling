@@ -129,7 +129,7 @@ Download that model explicitly, then enable the feature:
 ```
 
 Use `--hand-model path/to/hand_landmarker.task` for an existing model. Without
-`--hand-ignition`, `--palm-transfer` or `--snap-colors`, the app neither loads the
+`--hand-ignition`, `--fingertip-transfer` or `--snap-colors`, the app neither loads the
 hand model nor runs hand inference.
 The downloader's default remains the face model; `--output` works for either kind.
 
@@ -169,40 +169,54 @@ These totals remain rolling processing measurements; the existing simulation-onl
 benchmark results do not measure this additional ML workload. All inference stays
 local, and webcam footage is not saved.
 
-## Palm charging and fingertip transfer
+## Fingertip charging and transfer
 
-Use `--palm-transfer` to connect the two detected palms, charge all ten fingertips,
-then transfer their fire to the face. It uses the same local hand model:
+Use `--fingertip-transfer` to bring corresponding fingertips of the two hands
+together, charge all ten fingertips, then transfer their fire to the face.
+It uses the same local hand model:
 
 ```powershell
-.\.venv\Scripts\python.exe -m facial_fire.app --palm-transfer --snap-colors --execution parallel --threads 4
+.\.venv\Scripts\python.exe -m facial_fire.app --fingertip-transfer --snap-colors --execution parallel --threads 4
 ```
 
-Hold the palms together in the image for 0.18 s. Small animated flame markers
-appear on all five fingertips of each hand. Separate the palms, then hold a
+Hold at least three corresponding fingertip pairs close together for 0.18 s.
+Small animated flame markers appear on all five fingertips of each hand.
+Separate the fingertips, then hold a
 charged fingertip over the face oval for `--hand-dwell` seconds (default 0.12).
 That tip ignites the corresponding canonical face location using
 `--ignition-radius` and extinguishes immediately. Each charge transfers once;
-other fingertips remain charged. Reconnect the palms to refill all fingertips.
-Transfers are suppressed while the palms remain connected or are charging,
+other fingertips remain charged. Reconnect the fingertips to refill all ten.
+Transfers are suppressed while the fingertips remain connected or are charging,
 so holding them together cannot repeatedly consume/refill a fingertip.
 
-`--palm-transfer` and the original unlimited `--hand-ignition` mode are mutually
+`--fingertip-transfer` and the original unlimited `--hand-ignition` mode are mutually
 exclusive. Either can be combined with `--snap-colors`. Charging/transfer reuse
 one hand inference per frame. O hides both face and fingertip effects while
 interaction continues; K independently shows the hand skeleton. Snap color
-changes also recolor charged tips. The panel shows charged-tip count and palm
+changes also recolor charged tips. The panel shows charged-tip count and fingertip
 connection status. Flame markers are stylized local graphics, not another fluid
 simulation or a physical fire model.
 
-Palm connection is an image-space heuristic: distance between the means of
-wrist and four finger-base landmarks, normalized by average palm size. Palm size
-uses the same wrist/knuckle measurements as snapping. `--palm-distance` sets the
-entry threshold (default 0.75 palm-size units, valid `(0, 3]`); palms must separate
-beyond 1.4 times that distance before transferring/recharging. `--palm-dwell`
-sets the connection dwell (default 0.18 s, valid `[0, 2]`). These rules do not
-verify physical palm contact or palm orientation; depth-separated overlapping
-hands can charge. Two simultaneously detected hands are required to charge.
+Charging compares only corresponding fingertip pairs: thumb-to-thumb,
+index-to-index, middle-to-middle, ring-to-ring and pinky-to-pinky. Each gap is
+normalized by average palm size using the same wrist/knuckle measurements as
+snapping. Palm-center distance does not trigger charging. This supports facing
+the hands toward the camera and connecting fingertips without placing the palms
+together, which can occlude the landmarks.
+
+`--charge-distance` sets the pair entry threshold (default 0.35 palm-size units,
+valid `(0, 3]`). `--charge-pairs` sets how many corresponding pairs must be close
+(default 3, valid 1-5); setting it to 1 allows a single matching finger pair to
+charge all ten. `--charge-dwell` sets connection dwell (default 0.18 s, valid
+`[0, 2]`). Fewer than the required number of pairs within 1.4 times the distance
+threshold releases an established connection, rejecting boundary jitter. K shows
+individual normalized T/I/M/R/P gaps in the panel. These rules do not verify
+physical contact; depth-separated overlapping tips can charge. Two simultaneously
+detected hands are required, and this rule cannot recover missing hand landmarks.
+
+The previous `--palm-transfer`, `--palm-distance` and `--palm-dwell` flags remain
+aliases for the new fingertip-based mode and settings; they no longer select a
+palm-gap detector. The distance default is now 0.35 rather than 0.75.
 
 Charges are associated globally by palm position, size and handedness labels
 when confidence is at least 0.7. Result-order changes preserve state. Missing
@@ -307,7 +321,7 @@ coordinates and the status panel. `metrics.py` aggregates completed-frame timing
 `tracking.py` also wraps optional hand inference; `interaction.py` filters
 fingertips against the face mask and debounces canonical ignition regions.
 `gestures.py` tracks temporal thumb/middle separation for optional snap events.
-`transfer.py` owns per-fingertip charges, palm connection state, hand association
+`transfer.py` owns per-fingertip charges, fingertip connection state, hand association
 and consumable transfer events. The native grid remains the face simulation.
 Tests use synthetic landmarks;
 they require neither the model nor a webcam. `scripts/download_model.py` is the
@@ -492,10 +506,13 @@ slow/brief gesture rejection, cooldown/rearming, multiple hands and order change
 loss/stall/motion/crossing resets, and frame-rate variation. Rendering tests verify
 color changes preserve the grid and mask confinement. A synthetic app loop checks
 snap-only tracking, color cycling, and independent debug toggles.
-Palm-transfer tests cover charge dwell, hand-size/mirror normalization, individual
+Fingertip-transfer tests cover charge dwell, hand-size/mirror normalization, individual
 consumption, multiple tips, recharge, result-order changes, identity/loss handling,
 pause/face loss, invalid overlap, and fingertip marker clipping. These synthetic
 checks do not establish physical contact detection or live tracking reliability.
+Additional checks reject close palms with distant tips and noncorresponding tip
+overlap, accept close corresponding tips with separated palms, and verify pair
+counts, normalized diagnostics and connection-release hysteresis.
 
 For a manual check, ignite the face, press Space, then P: the frozen pattern
 should remain unchanged. Resume and confirm spreading continues. Try both spread

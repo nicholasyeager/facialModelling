@@ -1,4 +1,4 @@
-"""Palm charging and consumable fingertip-to-face transfers in image space."""
+"""Corresponding fingertip charging and consumable face transfers in image space."""
 
 from dataclasses import dataclass, field
 from itertools import permutations
@@ -19,26 +19,28 @@ class _HandFire:
     contacts: dict = field(default_factory=dict)
 
 
-class PalmTransfer:
-    """Charge once per palm connection; consume each tip on stable face overlap.
+class FingertipTransfer:
+    """Charge once per fingertip connection; consume tips on stable face overlap.
 
     Tracks are paired globally using palm position, scale and optional handedness.
-    Missing or ambiguous identity clears charges. Palm contact uses normalized
-    center distance with hysteresis; it cannot establish physical 3D contact.
+    Missing or ambiguous identity clears charges. Corresponding tip distances
+    trigger charging with hysteresis; they cannot establish physical 3D contact.
     """
 
-    def __init__(self, dwell=0.12, palm_dwell=0.18, palm_distance=0.75):
-        if not all(math.isfinite(value) for value in (dwell, palm_dwell, palm_distance)):
+    def __init__(self, dwell=0.12, charge_dwell=0.18, tip_distance=0.35, min_pairs=3):
+        if not all(math.isfinite(value) for value in (dwell, charge_dwell, tip_distance)):
             raise ValueError("Transfer settings must be finite")
-        if not (0 <= dwell <= 2 and 0 <= palm_dwell <= 2 and 0 < palm_distance <= 3):
-            raise ValueError("Invalid transfer dwell or palm distance")
-        self.dwell, self.palm_dwell, self.palm_distance = dwell, palm_dwell, palm_distance
+        if not (0 <= dwell <= 2 and 0 <= charge_dwell <= 2 and 0 < tip_distance <= 3
+                and isinstance(min_pairs, int) and not isinstance(min_pairs, bool) and 1 <= min_pairs <= 5):
+            raise ValueError("Invalid transfer dwell, fingertip distance or pair count")
+        self.dwell, self.charge_dwell, self.tip_distance = dwell, charge_dwell, tip_distance
+        self.min_pairs = min_pairs
         self.reset()
 
     def reset(self):
         self._hands = []
         self._last_time = None
-        self._palm_since = None
+        self._charge_since = None
         self._connected = False
         self.lines = []
 
@@ -113,37 +115,41 @@ class PalmTransfer:
         if paused:
             for hand in samples:
                 hand.contacts.clear()
-            self._palm_since = None
+            self._charge_since = None
             self.lines = [f"Transfer paused | charged tips {self.charged_count}"]
             return []
-        distance = math.inf
+        gaps = np.full(5, math.inf)
         if len(samples) == 2:
-            distance = float(np.linalg.norm(samples[0].center - samples[1].center)
-                             / ((samples[0].scale + samples[1].scale) / 2))
+            gaps = np.linalg.norm(samples[0].points[list(FINGERTIPS)] - samples[1].points[list(FINGERTIPS)], axis=1)
+            gaps /= (samples[0].scale + samples[1].scale) / 2
+        close_pairs = int(np.count_nonzero(gaps <= self.tip_distance))
+        held_pairs = int(np.count_nonzero(gaps <= self.tip_distance * 1.4))
+        diagnostics = " | ".join(f"{name} {gap:.2f}" if math.isfinite(gap) else f"{name} --"
+                                 for name, gap in zip(("T", "I", "M", "R", "P"), gaps))
         # Release needs more separation than entry, to reject boundary jitter.
-        if distance > self.palm_distance * 1.4:
+        if held_pairs < self.min_pairs:
             self._connected = False
-            self._palm_since = None
-        if distance <= self.palm_distance:
-            if self._palm_since is None:
-                self._palm_since = now
-            if now - self._palm_since + 1e-12 >= self.palm_dwell:
+            self._charge_since = None
+        if close_pairs >= self.min_pairs:
+            if self._charge_since is None:
+                self._charge_since = now
+            if now - self._charge_since + 1e-12 >= self.charge_dwell:
                 self._connected = True
         elif not self._connected:
-            self._palm_since = None
+            self._charge_since = None
         if self._connected:
             # While connected every tip has the same state. This safely survives
             # ambiguous palm association; consumption begins only after release.
             for hand in samples:
                 hand.charged[:] = True
                 hand.contacts.clear()
-            self.lines = [f"Palms charged - separate to transfer | tips {self.charged_count}"]
+            self.lines = [f"Fingertips charged - separate to transfer | tips {self.charged_count}", diagnostics]
             return []
-        # Suppress transfer during an incomplete palm connection as well.
-        if self._palm_since is not None:
+        # Suppress transfer during an incomplete fingertip connection as well.
+        if self._charge_since is not None:
             for hand in samples:
                 hand.contacts.clear()
-            self.lines = ["Palms connecting..."]
+            self.lines = [f"Fingertips connecting: {close_pairs}/5 pairs", diagnostics]
             return []
         events = []
         for hand in samples:
@@ -168,6 +174,5 @@ class PalmTransfer:
                     else:
                         current[slot] = (anchor, since)
             hand.contacts = current
-        gap = f"{distance:.2f}" if math.isfinite(distance) else "--"
-        self.lines = [f"Palm gap {gap} | charged tips {self.charged_count}"]
+        self.lines = [f"Close fingertip pairs {close_pairs}/5 | charged tips {self.charged_count}", diagnostics]
         return events
